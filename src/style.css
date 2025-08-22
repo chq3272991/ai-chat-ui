@@ -1,0 +1,178 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 页面整体背景与文字 */
+body, html {
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff; /* 白色背景 */
+  color: #333333;            /* 黑色文字 */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* container 全屏 flex 布局 */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;      /* 占满屏幕 */
+  margin: 0;
+  padding: 0;         /* 去掉原来的 padding，避免总高度超出 */
+}
+
+
+/* header 高度自适应内容 */
+header {
+  padding: 1rem;
+  flex-shrink: 0;     /* 不缩小 */
+}
+
+/* main 消息展示区 - 占用剩余空间，滚动 */
+.messages {
+  flex: 1;              /* 占据剩余空间 */
+  overflow-y: auto;     /* 超出滚动 */
+  padding: 10px;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+/* 消息气泡 */
+.message {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.role {
+  display: none;
+}
+
+.bubble {
+  border-radius: 6px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #000;
+}
+
+.bubble[name="assistant"] {
+  background-color: #f5f5f5;
+  margin-right: auto;  /* 左对齐 */
+  max-width: 60%;
+}
+
+.bubble[name="user"] {
+  background-color: #e0f7fa;
+  margin-left: auto;   /* 右对齐 */
+  max-width: 30%;
+}
+
+/* footer 输入区固定底部 */
+.input-area {
+  flex-shrink: 0;       /* 不缩小 */
+  height: 18%;          /* 15~20% 高度 */
+  min-height: 60px;
+  max-height: 150px;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+  background-color: #fafafa;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* textarea 填满 footer 容器 */
+.input-area textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* 按钮样式 */
+.input-area button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #333;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.input-area button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.content-container {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.think-container {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.think-container button {
+  font-size: 12px;
+  padding: 2px 6px;
+  cursor: pointer;
+  background-color: #ddd;
+  border: none;
+  border-radius: 4px;
+}
+
+.think-content {
+  margin-top: 4px;
+  padding-left: 10px;
+  font-size: 13px;
+  color: #555;
+}
+
+.think-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.arrow {
+  display: inline-block;
+  margin-left: 5px;
+  transition: transform 0.2s;
+}
+
+.arrow.open {
+  transform: rotate(90deg);
+}
+
+.think-button span.rotated {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.think-button span.rotated.rotated {
+  transform: rotate(90deg);
+}
