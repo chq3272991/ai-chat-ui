@@ -39,12 +39,16 @@ export const useChatStore = defineStore('chat', {
                 }
             }
         },
-        async send() {
+        // ⬇️ 新增 hooks 参数
+        async send(hooks?: {
+            onAssistantStart?: (aiIndex: number) => void
+            onAssistantDone?: (aiIndex: number) => void
+            onError?: (e: any) => void
+        }) {
             if (this.sending) return
             this.error = ''
             this.sending = true
             this.controller = new AbortController()
-
 
             const body: ChatRequestBody = {
                 model: this.model,
@@ -53,15 +57,24 @@ export const useChatStore = defineStore('chat', {
                 stream: true,
             }
 
-
             this.appendAssistantMessagePlaceholder()
-
+            const aiIndex = this.messages.length - 1
+            hooks?.onAssistantStart?.(aiIndex)   // ⬅️ 告知外层：助手消息开始了
 
             await streamChat(body, {
                 signal: this.controller.signal,
                 onToken: (chunk) => this.updateLastAssistantContent(chunk),
-                onDone: () => { this.sending = false; this.controller = null },
-                onError: (e) => { this.sending = false; this.controller = null; this.error = e?.message || String(e) },
+                onDone: () => {
+                    this.sending = false
+                    this.controller = null
+                    hooks?.onAssistantDone?.(aiIndex) // ⬅️ 告知外层：助手消息结束
+                },
+                onError: (e) => {
+                    this.sending = false
+                    this.controller = null
+                    this.error = e?.message || String(e)
+                    hooks?.onError?.(e)
+                },
             })
         },
         stop() {

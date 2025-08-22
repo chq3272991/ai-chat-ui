@@ -14,10 +14,17 @@
         <!-- <div class="role">{{ m.role }}</div> -->
         <div class="bubble" :name="m.role">
           <!-- think 折叠区域 -->
-          <div v-if="parseText(m.content).thinkText" class="think-container">
+          <div
+            v-if="thinkLoading[i] || parseText(m.content).thinkText"
+            class="think-container"
+          >
             <button @click="toggleThink(i)">
-              {{ thinkOpen[i] ? "收起思考" : "显示思考" }}
+              <template v-if="thinkLoading[i]"> > 思考中{{ loadingDots }} </template>
+              <template v-else>
+                > 思考了 {{ thinkTime[i] }} 秒 {{ thinkOpen[i] ? "▲" : "▼" }}
+              </template>
             </button>
+
             <div v-show="thinkOpen[i]" class="think-content">
               <template v-for="(line, idx) in parseText(m.content).thinkLines" :key="idx">
                 {{ line }}<br />
@@ -84,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive } from "vue";
+import { ref, watch, reactive, watchEffect } from "vue";
 import { useChatStore } from "./stores/chat";
 import FilePicker from "./components/FilePicker.vue";
 
@@ -92,6 +99,25 @@ const store = useChatStore();
 const input = ref("");
 const model = ref(store.model);
 const thinkOpen = reactive<Record<number, boolean>>({});
+const thinkTime = reactive<Record<number, number>>({}); // 存储每条消息的耗时
+const thinkLoading = reactive<Record<number, boolean>>({}); // 标记是否请求中
+
+const loadingDots = ref(".");
+let dotTimer: any;
+
+watchEffect(() => {
+  if (Object.values(thinkLoading).some((v) => v)) {
+    if (!dotTimer) {
+      dotTimer = setInterval(() => {
+        loadingDots.value = loadingDots.value.length >= 5 ? "." : loadingDots.value + ".";
+      }, 500);
+    }
+  } else {
+    clearInterval(dotTimer);
+    dotTimer = null;
+    loadingDots.value = ".";
+  }
+});
 
 watch(model, (v) => (store.model = v));
 
@@ -137,11 +163,28 @@ function formatContent(content: string) {
 }
 
 async function onSubmit() {
-  const content = input.value;
+  const content = input.value.trim();
+  if (!content) return;
+
   input.value = "";
   store.appendUserMessage(content, pendingImages, pendingFiles);
   pendingImages = [];
   pendingFiles = [];
-  await store.send();
+
+  const start = Date.now();
+
+  await store.send({
+    onAssistantStart: (aiIndex) => {
+      // 助手占位消息一创建就能显示“思考中…”
+      thinkOpen[aiIndex] = false;
+      thinkLoading[aiIndex] = true;
+      thinkTime[aiIndex] = 0;
+    },
+    onAssistantDone: (aiIndex) => {
+      thinkLoading[aiIndex] = false;
+      const sec = Math.max(0, Math.round((Date.now() - start) / 1000));
+      thinkTime[aiIndex] = sec;
+    },
+  });
 }
 </script>
