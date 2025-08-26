@@ -3,8 +3,13 @@
     <header>
       <h1>AI Chat UI</h1>
       <div style="margin-top: 8px; font-size: 14px">
-        模型: <input v-model="model" style="width: 150px" />
-        <button @click="store.clear()">清空</button>
+        模型:
+        <select v-model="model" style="width: 160px">
+          <option value="qwen3:1.7b">qwen3:1.7b</option>
+          <option value="qwen3:4b">qwen3:4b</option>
+          <option value="qwen3:8b">qwen3:8b</option>
+        </select>
+        <button @click="reset">重置</button>
       </div>
     </header>
 
@@ -25,6 +30,7 @@
               </template>
             </button>
 
+            <!-- 思考文本 -->
             <div v-show="thinkOpen[i]" class="think-content">
               <template v-for="(line, idx) in parseText(m.content).thinkLines" :key="idx">
                 {{ line }}<br />
@@ -32,18 +38,18 @@
             </div>
           </div>
 
-          <!-- 普通文本 -->
-          <!-- <template v-for="line in parseText(m.content).normalLines" :key="line.idx">
-            {{ line.text }}
-          </template> -->
-
-          <div
+          <!--  回答正文 -->
+          <!-- <div
             v-for="(line, idx) in parseText(m.content).normalLines"
             :key="idx"
             class="content-container"
-          >
-            {{ line }}<br />
-          </div>
+            v-html="renderMarkdown(line)"
+          ></div> -->
+
+          <div
+            class="content-container markdown-wrapper"
+            v-html="renderNormalMarkdown(parseText(m.content).normalLines)"
+          ></div>
 
           <div v-if="m.images?.length" style="margin-top: 5px">
             <img
@@ -91,19 +97,40 @@
 </template>
 
 <script setup lang="ts">
+import MarkdownIt from "markdown-it";
 import { ref, watch, reactive, watchEffect } from "vue";
 import { useChatStore } from "./stores/chat";
 import FilePicker from "./components/FilePicker.vue";
 
 const store = useChatStore();
 const input = ref("");
-const model = ref(store.model);
 const thinkOpen = reactive<Record<number, boolean>>({});
 const thinkTime = reactive<Record<number, number>>({}); // 存储每条消息的耗时
 const thinkLoading = reactive<Record<number, boolean>>({}); // 标记是否请求中
+const DEFAULT_MODEL = "qwen3:4b";
+const model = ref(store.model || DEFAULT_MODEL);
 
 const loadingDots = ref(".");
 let dotTimer: any;
+
+watch(model, (v) => (store.model = v));
+
+function reset() {
+  store.clear();
+  model.value = DEFAULT_MODEL;
+  store.model = DEFAULT_MODEL;
+}
+
+const md = new MarkdownIt({
+  html: true, // 允许 HTML 标签
+  linkify: true, // 自动识别链接
+  breaks: true, // 回车换行
+});
+
+// 封装一个工具方法，把纯文本转成 HTML
+function renderMarkdown(text: string) {
+  return md.render(text || "");
+}
 
 watchEffect(() => {
   if (Object.values(thinkLoading).some((v) => v)) {
@@ -132,17 +159,40 @@ function onPicked(payload: {
   pendingFiles = payload.files;
 }
 
+// 解析 data:{} → 提取 JSON.text
+function extractTextFromEvent(raw: string): string {
+  let jsonStr = raw.trim();
+  if (jsonStr.startsWith("data:")) {
+    jsonStr = jsonStr.substring(5).trim();
+  }
+
+  try {
+    const obj = JSON.parse(jsonStr);
+    return obj?.result?.output?.text || obj?.results?.[0]?.output?.text || "";
+  } catch (e) {
+    console.warn("JSON 解析失败", e);
+    return "";
+  }
+}
+
+// script setup
+function renderNormalMarkdown(lines: string[]) {
+  const text = lines.join("\n"); // 合并成整体 markdown
+  return md.render(text);
+}
+
 /**
  * 解析 text，提取 think 内容
+ * parseTest在流式响应API会被调用多次，每次text内容追加
  */
 function parseText(text: string) {
+  //console.log("打印 text：", text);
   const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
   const thinkText = thinkMatch ? thinkMatch[1].trim() : "";
   const normalText = text.replace(/<think>[\s\S]*?<\/think>/, "").trim();
 
   return {
     thinkText,
-    //normalLines: normalText.split("\n").map((t, idx) => ({ text: t, idx })),
     normalLines: normalText.split("\n"),
     thinkLines: thinkText.split("\n"),
   };
@@ -158,7 +208,6 @@ function toggleThink(idx: number) {
 function formatContent(content: string) {
   // 打印
   //console.console.log(content.replace(/\n/g, "<br>"));
-
   return content.replace(/\n/g, "<br>");
 }
 

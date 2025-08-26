@@ -121,9 +121,10 @@ header {
 }
 
 .content-container {
-  margin-top: 5px;
-  margin-bottom: 5px;
+ margin: 0;          /* 去掉外层 margin */
+  padding: 2px 0;     /* 可调小间距 */
   text-align: left;
+  line-height: 1.2;   /* 保持行高 */
 }
 
 .think-container {
@@ -175,4 +176,44 @@ header {
 
 .think-button span.rotated.rotated {
   transform: rotate(90deg);
+}
+
+.content-container p {
+  margin-block-start: 0.1em;  /* 去掉上边距 */
+  margin-block-end: 0.1em;    /* 去掉下边距 */
+  padding: 0;             /* 可选，清除 padding */
+}
+
+.content-container p,
+.content-container h1,
+.content-container h2,
+.content-container h3,
+.content-container h4,
+.content-container h5,
+.content-container h6,
+.content-container p,
+.content-container ul，
+.content-container ol {
+  margin-top: 0.0em;   /* 或自己调整 */
+  margin-bottom: 0.0em;
+}
+
+.content-container h3 {
+  margin-block-start: 0.1em;
+  margin-block-end: 0.1em;
+}
+
+.content-container ul，
+.content-container ol {
+  padding-left: 1.2em; /* 列表缩进 */
+}
+
+.content-container ul {
+  margin-top: -10.0em; 
+  margin-block-start: -10em;
+  margin: 0.1em 0;
+}
+
+.content-container li {
+  margin: 0.2em 0;     /* 列表项间距 */
 }

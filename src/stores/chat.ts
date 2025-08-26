@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import type { ChatMessage, ChatRequestBody, ChatOptions } from '@/types'
 import { streamChat } from '@/lib/api'
 
+const DEFAULT_MODEL = "qwen3:4b"
 
 export const useChatStore = defineStore('chat', {
     state: () => ({
-        model: 'qwen3:4b',
+        model: DEFAULT_MODEL,
         options: { temperature: 0.7, top_p: 0.9, max_tokens: 200 } as ChatOptions,
         messages: [] as ChatMessage[],
         sending: false,
@@ -20,22 +21,31 @@ export const useChatStore = defineStore('chat', {
             this.messages.push({ role: 'assistant', content: '' })
         },
         updateLastAssistantContent(delta: string) {
-            let text = delta
+            let piece = "";  // ← 这里声明
 
             try {
-                const json = JSON.parse(delta)
-                // 如果是完整返回的 JSON
-                if (json.result?.output?.text) {
-                    text = json.result.output.text
+                // 去掉 SSE 前缀
+                let jsonStr = delta.trim();
+                if (jsonStr.startsWith("data:")) {
+                    jsonStr = jsonStr.substring(5).trim();
                 }
+
+                // 解析 JSON
+                const obj = JSON.parse(jsonStr);
+                piece =
+                    obj?.result?.output?.text ||
+                    obj?.results?.[0]?.output?.text ||
+                    "";
             } catch {
-                // 不是 JSON，就直接用 delta
+                // 如果不是合法 JSON，就直接当作普通字符串
+                piece = delta;
             }
 
+            // 把片段拼接到最后一个 assistant 消息
             for (let i = this.messages.length - 1; i >= 0; i--) {
-                if (this.messages[i].role === 'assistant') {
-                    this.messages[i].content += text
-                    break
+                if (this.messages[i].role === "assistant") {
+                    this.messages[i].content += piece;
+                    break;
                 }
             }
         },

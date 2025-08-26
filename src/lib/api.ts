@@ -18,7 +18,7 @@ export async function streamChat(
     try {
         const resp = await fetch('/api/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
             body: JSON.stringify(body),
             signal,
         })
