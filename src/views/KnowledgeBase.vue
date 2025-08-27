@@ -1,13 +1,19 @@
 <template>
   <div class="kb-container">
-    <!-- 工具栏：面包屑 + 右上角上传 -->
+    <!-- 工具栏：面包屑 + 搜索 + 上传 -->
     <div class="kb-toolbar">
-      <div class="kb-breadcrumbs">
-        <span class="crumb" @click="goRoot">根目录</span>
-        <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
-          <span class="sep">/</span>
-          <span class="crumb" @click="goToIndex(idx)">{{ seg }}</span>
-        </template>
+      <div class="kb-left">
+        <div class="kb-breadcrumbs">
+          <span class="crumb" @click="goRoot">根目录</span>
+          <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
+            <span class="sep">/</span>
+            <span class="crumb" @click="goToIndex(idx)">{{ seg }}</span>
+          </template>
+        </div>
+        <div class="kb-search">
+          <input type="text" v-model="searchQuery" placeholder="搜索文件/文件夹" />
+          <button class="kb-btn" @click="doSearch">搜索</button>
+        </div>
       </div>
       <div class="kb-actions">
         <button class="kb-btn" @click="triggerUpload">上传文件</button>
@@ -28,30 +34,35 @@
           <tr>
             <th style="text-align: left">名称</th>
             <th style="width: 100px">类型</th>
-            <th style="width: 140px">大小</th>
+            <th style="width: 100px">大小</th>
             <th style="width: 180px">修改时间</th>
+            <th style="width: 140px">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="currentPath" class="kb-row" @click="goUp">
-            <td colspan="4">⬆️ 返回上级 ..</td>
+            <td colspan="5">⬆️ 返回上级 ..</td>
           </tr>
-          <tr
-            v-for="item in items"
-            :key="itemKey(item)"
-            class="kb-row"
-            @click="open(item)"
-          >
-            <td>
+          <tr v-for="item in filteredItems" :key="itemKey(item)" class="kb-row">
+            <td
+              @click="item.type === 'dir' ? open(item) : download(item)"
+              style="cursor: pointer"
+            >
               <span v-if="item.type === 'dir'">📁 {{ item.name }}</span>
               <span v-else>📄 {{ item.name }}</span>
             </td>
             <td>{{ item.type }}</td>
             <td>{{ item.size ?? "-" }}</td>
             <td>{{ item.updatedAt ?? "-" }}</td>
+            <td>
+              <button class="kb-btn small" @click="download(item)">下载</button>
+              <button class="kb-btn small danger" @click="confirmDelete(item)">
+                删除
+              </button>
+            </td>
           </tr>
-          <tr v-if="!items.length">
-            <td colspan="4" style="text-align: center; color: #777">此目录暂无文件</td>
+          <tr v-if="!filteredItems.length">
+            <td colspan="5" style="text-align: center; color: #777">此目录暂无文件</td>
           </tr>
         </tbody>
       </table>
@@ -73,6 +84,7 @@ type KBItem = {
 const items = ref<KBItem[]>([]);
 const currentPath = ref(""); // 使用 "/" 拼接
 const fileInput = ref<HTMLInputElement | null>(null);
+const searchQuery = ref("");
 
 const breadcrumbSegments = computed(() =>
   currentPath.value ? currentPath.value.split("/").filter(Boolean) : []
@@ -86,12 +98,13 @@ function pathJoin(base: string, name: string) {
   return [base, name].filter(Boolean).join("/");
 }
 
+// 加载目录
 async function loadDir(path = "") {
   try {
     const { data } = await axios.get("/api/kb/list", { params: { path } });
     items.value = data?.items || [];
   } catch (e) {
-    // 没有后端时的占位数据，便于前端自测
+    // 占位数据
     items.value = [
       { name: "docs", type: "dir", updatedAt: "2025-01-01 10:00" },
       { name: "readme.md", type: "file", size: "3.2 KB", updatedAt: "2025-01-05 09:12" },
@@ -104,7 +117,7 @@ function open(it: KBItem) {
     currentPath.value = pathJoin(currentPath.value, it.name);
     loadDir(currentPath.value);
   } else {
-    // 文件点击可扩展：下载/预览
+    download(it);
   }
 }
 
@@ -146,19 +159,42 @@ async function onUpload(e: Event) {
   }
 }
 
+// 下载文件
+function download(item: KBItem) {
+  if (item.type === "dir") return;
+  const link = document.createElement("a");
+  link.href = `/api/kb/download?path=${encodeURIComponent(
+    pathJoin(currentPath.value, item.name)
+  )}`;
+  link.download = item.name;
+  link.click();
+}
+
+// 删除文件或文件夹
+function confirmDelete(item: KBItem) {
+  if (!confirm(`确认删除 "${item.name}" 吗？`)) return;
+  axios
+    .post("/api/kb/delete", { path: pathJoin(currentPath.value, item.name) })
+    .then(() => loadDir(currentPath.value))
+    .catch((err) => alert("删除失败：" + err));
+}
+
+// 搜索
+const filteredItems = computed(() => {
+  if (!searchQuery.value.trim()) return items.value;
+  return items.value.filter((it) => it.name.includes(searchQuery.value.trim()));
+});
+
+function doSearch() {
+  // 这里可以留空，因为 filteredItems 已经根据 searchQuery 实时过滤
+  // 如果你希望按回车或按钮触发重新加载，可在此处调用后端 API 搜索
+  console.log("搜索关键词:", searchQuery.value);
+}
+
 onMounted(() => loadDir(""));
 </script>
 
 <style scoped>
-/* 简单列表样式 */
-ul {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-li {
-  margin-bottom: 4px;
-}
 .kb-container {
   display: flex;
   flex-direction: column;
@@ -167,17 +203,14 @@ li {
 }
 .kb-toolbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
 }
-.kb-actions .kb-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
+.kb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .kb-breadcrumbs {
   font-size: 14px;
@@ -190,9 +223,22 @@ li {
   margin: 0 6px;
   color: #999;
 }
-.kb-list {
-  flex: 1;
-  overflow: auto;
+.kb-search input {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.kb-search button {
+  margin-left: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.kb-actions .kb-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
 }
 .kb-table {
   width: 100%;
@@ -208,5 +254,18 @@ li {
 }
 .kb-row:hover {
   background: #fafafa;
+}
+.kb-btn.small {
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-right: 4px;
+}
+.kb-btn.danger {
+  background-color: #e53935;
+  color: #fff;
+}
+.kb-list {
+  flex: 1;
+  overflow: auto;
 }
 </style>

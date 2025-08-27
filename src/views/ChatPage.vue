@@ -189,7 +189,6 @@ function parseText(text: string) {
   const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
   const thinkText = thinkMatch ? thinkMatch[1].trim() : "";
   const normalText = text.replace(/<think>[\s\S]*?<\/think>/, "").trim();
-
   return {
     thinkText,
     normalLines: normalText.split("\n"),
