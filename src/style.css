@@ -28,7 +28,7 @@ body, html {
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;      /* 占满屏幕 */
+  height: 95vh;      /* 占满屏幕 */
   margin: 0;
   padding: 0;         /* 去掉原来的 padding，避免总高度超出 */
 }

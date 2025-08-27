@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-screen">
+  <div class="header-container">
     <!-- 极简 header -->
-    <header class="flex items-center px-2 py-1 border-b flex-shrink-0 bg-white">
+    <header class="flex items-center px-2 py-1 border-b flex-shrink-0 bg-white header-p">
       <nav class="flex gap-1">
         <router-link to="/" class="tab-btn">对话框</router-link>
         <router-link to="/kb" class="tab-btn">知识库</router-link>
@@ -20,6 +20,19 @@
 </script>
 
 <style scoped>
+.header-container {
+  display: flex;
+  flex-direction: column;
+  height: 5vh;
+  margin: 0;
+  padding: 0;
+}
+
+.header-p {
+  padding: 0.5rem;
+  flex-shrink: 0;
+}
+
 .tab-btn {
   padding: 2px 6px;
   font-size: 13px;
