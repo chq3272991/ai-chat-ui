@@ -15,14 +15,24 @@
           <button class="kb-btn" @click="doSearch">搜索</button>
         </div>
       </div>
-      <div class="kb-actions">
-        <button class="kb-btn" @click="triggerUpload">上传文件</button>
+      <div>
+        <!-- 选择文件 -->
+        <button @click="triggerFileSelect">选择文件</button>
         <input
-          ref="fileInput"
           type="file"
-          webkitdirectory
-          multiple
+          ref="fileInput"
           style="display: none"
+          multiple
+          @change="onUpload"
+        />
+
+        <!-- 选择文件夹 -->
+        <button @click="triggerFolderSelect">选择文件夹</button>
+        <input
+          type="file"
+          ref="folderInput"
+          style="display: none"
+          webkitdirectory
           @change="onUpload"
         />
       </div>
@@ -70,6 +80,7 @@
     </div>
   </div>
 
+  <!-- 上传弹窗 -->
   <div v-if="showUploadModal" class="upload-modal">
     <div class="modal-content">
       <h3>上传文件确认</h3>
@@ -105,34 +116,41 @@ import { computed, onMounted, ref } from "vue";
 import axios from "axios";
 
 type KBItem = {
-  id: string; // 接口返回的 id
-  fileName: string; // 原来的 name 改为 fileName
-  type: "dir" | "file"; // 文件类型
-  fileSize?: number; // 原来的 size 改为 fileSize，类型为 number
-  createTime?: string; // 原来的 updatedAt 改为 createTime
-  updateTime?: string; // 可选，如果你也需要显示更新时间
-  filePath?: string; // 下载用
+  id: string;
+  fileName: string;
+  type: "dir" | "file";
+  fileSize?: number;
+  createTime?: string;
+  updateTime?: string;
+  filePath?: string;
 };
 
 const items = ref<KBItem[]>([]);
-const currentPath = ref(""); // 使用 "/" 拼接
-const fileInput = ref<HTMLInputElement | null>(null);
+const currentPath = ref("");
 const searchQuery = ref("");
 
 const breadcrumbSegments = computed(() =>
   currentPath.value ? currentPath.value.split("/").filter(Boolean) : []
 );
 
-const showUploadModal = ref(false); // 是否显示上传弹窗
-const optimizeText = ref(false); // 勾选框状态
+const showUploadModal = ref(false);
+const optimizeText = ref(false);
 type PendingFile = {
   file: File;
-  progress: number; // 0~100
+  progress: number;
   status: "pending" | "uploading" | "done" | "error";
 };
 const pendingFiles = ref<PendingFile[]>([]);
-const uploadProgress = ref(0); // 上传进度，0~100
-const isUploading = ref(false); // 是否正在上传
+const fileInput = ref<HTMLInputElement | null>(null);
+const folderInput = ref<HTMLInputElement | null>(null);
+
+function triggerFileSelect() {
+  fileInput.value?.click();
+}
+
+function triggerFolderSelect() {
+  folderInput.value?.click();
+}
 
 function itemKey(it: KBItem) {
   return currentPath.value + "/" + it.fileName;
@@ -142,7 +160,6 @@ function pathJoin(base: string, name: string) {
   return [base, name].filter(Boolean).join("/");
 }
 
-// 加载目录
 async function loadDir(filePath = "") {
   try {
     const { data } = await axios.get("/api/file/list", { params: { filePath } });
@@ -195,40 +212,32 @@ function goToIndex(idx: number) {
   loadDir(currentPath.value);
 }
 
+/** 单按钮，支持文件 + 文件夹上传 */
 function triggerUpload() {
-  fileInput.value?.click();
+  const input = fileInput.value!;
+  input.value = ""; // 清空上次选择
+  input.setAttribute("multiple", ""); // 支持多文件
+  input.setAttribute("webkitdirectory", ""); // 同时允许选文件夹
+  input.click();
 }
 
-async function onUpload(e: Event) {
+function onUpload(e: Event) {
   const input = e.target as HTMLInputElement;
   if (!input.files || input.files.length === 0) return;
 
   console.log("当前所在目录：", currentPath.value);
 
+  // 判断是否选择了文件夹（通过 webkitRelativePath 判断）
   const firstFile = input.files[0] as any;
   let topFolder = "";
   if (firstFile.webkitRelativePath) {
     // webkitRelativePath 示例: "MyFolder/sub1/file.txt"
     topFolder = firstFile.webkitRelativePath.split("/")[0];
+    console.log("选择的顶层文件夹：", topFolder);
+    // 调用创建文件夹的接口 /file/folder
+    createFolderApi(topFolder);
   }
 
-  console.log("选择上传的文件夹名称：", topFolder);
-
-  // === 先调用后端接口创建文件夹 ===
-  if (topFolder) {
-    try {
-      await axios.post("/api/file/folder", {
-        folderName: topFolder,
-        path: currentPath.value + "/" + topFolder, // 当前路径下创建
-      });
-      console.log("文件夹创建成功:", topFolder);
-    } catch (err) {
-      console.error("创建文件夹失败:", err);
-      return; // 失败直接返回，避免继续上传
-    }
-  }
-
-  // === 设置待上传文件列表 ===
   pendingFiles.value = Array.from(input.files).map((f) => ({
     file: f,
     progress: 0,
@@ -237,23 +246,35 @@ async function onUpload(e: Event) {
 
   showUploadModal.value = true;
 
-  // 重置 input
-  if (fileInput.value) fileInput.value.value = "";
+  // 重置 input，避免多次选择同一文件不触发 change
+  input.value = "";
+}
+
+// 模拟 API 调用
+async function createFolderApi(folderName: string) {
+  console.log("调用 /file/folder 接口创建文件夹:", folderName);
+  // 这里可以用 axios/fetch 调用实际接口
+  if (folderName) {
+    try {
+      await axios.post("/api/file/folder", {
+        folderName: folderName,
+        dirPath: currentPath.value, // 当前路径下创建
+      });
+      console.log("文件夹创建成功:", folderName);
+    } catch (err) {
+      console.error("创建文件夹失败:", err);
+      return; // 失败直接返回，避免继续上传
+    }
+  }
 }
 
 async function confirmUpload() {
-  // if (!optimizeText.value) {
-  //   alert("请勾选“优化文本内容”再上传");
-  //   return;
-  // }
   if (!pendingFiles.value.length) return;
 
   for (const pf of pendingFiles.value) {
     pf.status = "uploading";
 
     const form = new FormData();
-    console.log("file所在文件夹信息：", pf.file.webkitRelativePath);
-
     form.append("file", pf.file);
     form.append("path", currentPath.value);
     form.append("optimize", String(optimizeText.value));
@@ -282,7 +303,6 @@ function cancelUpload() {
   showUploadModal.value = false;
 }
 
-// 下载文件
 function download(item: KBItem) {
   if (item.type === "dir") return;
   const link = document.createElement("a");
@@ -293,7 +313,6 @@ function download(item: KBItem) {
   link.click();
 }
 
-// 删除文件或文件夹
 function confirmDelete(item: KBItem) {
   if (!confirm(`确认删除 "${item.fileName}" 吗？`)) return;
   axios
@@ -302,15 +321,12 @@ function confirmDelete(item: KBItem) {
     .catch((err) => alert("删除失败：" + err));
 }
 
-// 搜索
 const filteredItems = computed(() => {
   if (!searchQuery.value.trim()) return items.value;
   return items.value.filter((it) => it.fileName.includes(searchQuery.value.trim()));
 });
 
 function doSearch() {
-  // 这里可以留空，因为 filteredItems 已经根据 searchQuery 实时过滤
-  // 如果你希望按回车或按钮触发重新加载，可在此处调用后端 API 搜索
   console.log("搜索关键词:", searchQuery.value);
 }
 
