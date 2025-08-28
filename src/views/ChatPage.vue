@@ -7,6 +7,7 @@
           <option value="qwen3:1.7b">qwen3:1.7b</option>
           <option value="qwen3:4b">qwen3:4b</option>
           <option value="qwen3:8b">qwen3:8b</option>
+          <option value="deepseek-r1:8b">deepseek-r1:8b</option>
         </select>
         <button @click="reset">重置</button>
       </div>
@@ -106,7 +107,7 @@ const input = ref("");
 const thinkOpen = reactive<Record<number, boolean>>({});
 const thinkTime = reactive<Record<number, number>>({}); // 存储每条消息的耗时
 const thinkLoading = reactive<Record<number, boolean>>({}); // 标记是否请求中
-const DEFAULT_MODEL = "qwen3:4b";
+const DEFAULT_MODEL = "deepseek-r1:8b";
 const model = ref(store.model || DEFAULT_MODEL);
 
 const loadingDots = ref(".");

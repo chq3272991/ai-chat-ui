@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import type { ChatMessage, ChatRequestBody, ChatOptions } from '@/types'
 import { streamChat } from '@/lib/api'
 
-const DEFAULT_MODEL = "qwen3:4b"
+const DEFAULT_MODEL = "deepseek-r1:8b"
 
 export const useChatStore = defineStore('chat', {
     state: () => ({
