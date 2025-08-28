@@ -49,12 +49,12 @@
               @click="item.type === 'dir' ? open(item) : download(item)"
               style="cursor: pointer"
             >
-              <span v-if="item.type === 'dir'">📁 {{ item.name }}</span>
-              <span v-else>📄 {{ item.name }}</span>
+              <span v-if="item.type === 'dir'">📁 {{ item.fileName }}</span>
+              <span v-else>📄 {{ item.fileName }}</span>
             </td>
             <td>{{ item.type }}</td>
-            <td>{{ item.size ?? "-" }}</td>
-            <td>{{ item.updatedAt ?? "-" }}</td>
+            <td>{{ item.fileSize ?? "-" }}</td>
+            <td>{{ item.createTime ?? "-" }}</td>
             <td>
               <button class="kb-btn small" @click="download(item)">下载</button>
               <button class="kb-btn small danger" @click="confirmDelete(item)">
@@ -105,10 +105,13 @@ import { computed, onMounted, ref } from "vue";
 import axios from "axios";
 
 type KBItem = {
-  name: string;
-  type: "dir" | "file";
-  size?: string;
-  updatedAt?: string;
+  id: string; // 接口返回的 id
+  fileName: string; // 原来的 name 改为 fileName
+  type: "dir" | "file"; // 文件类型
+  fileSize?: number; // 原来的 size 改为 fileSize，类型为 number
+  createTime?: string; // 原来的 updatedAt 改为 createTime
+  updateTime?: string; // 可选，如果你也需要显示更新时间
+  filePath?: string; // 下载用
 };
 
 const items = ref<KBItem[]>([]);
@@ -132,7 +135,7 @@ const uploadProgress = ref(0); // 上传进度，0~100
 const isUploading = ref(false); // 是否正在上传
 
 function itemKey(it: KBItem) {
-  return currentPath.value + "/" + it.name;
+  return currentPath.value + "/" + it.fileName;
 }
 
 function pathJoin(base: string, name: string) {
@@ -140,22 +143,33 @@ function pathJoin(base: string, name: string) {
 }
 
 // 加载目录
-async function loadDir(path = "") {
+async function loadDir(filePath = "") {
   try {
-    const { data } = await axios.get("/api/kb/list", { params: { path } });
-    items.value = data?.items || [];
+    const { data } = await axios.get("/api/file/list", { params: { filePath } });
+    items.value = data?.data || []; // 直接取 data
+    console.log("文件夹和文件列表", items.value);
   } catch (e) {
-    // 占位数据
     items.value = [
-      { name: "docs", type: "dir", updatedAt: "2025-01-01 10:00" },
-      { name: "readme.md", type: "file", size: "3.2 KB", updatedAt: "2025-01-05 09:12" },
+      {
+        id: "1",
+        fileName: "docs",
+        type: "dir",
+        createTime: "2025-01-01T10:00:00",
+      },
+      {
+        id: "2",
+        fileName: "readme.md",
+        type: "file",
+        fileSize: 3.2 * 1024, // KB 转字节
+        createTime: "2025-01-05T09:12:00",
+      },
     ];
   }
 }
 
 function open(it: KBItem) {
   if (it.type === "dir") {
-    currentPath.value = pathJoin(currentPath.value, it.name);
+    currentPath.value = pathJoin(currentPath.value, it.fileName);
     loadDir(currentPath.value);
   } else {
     download(it);
@@ -185,20 +199,36 @@ function triggerUpload() {
   fileInput.value?.click();
 }
 
-function onUpload(e: Event) {
+async function onUpload(e: Event) {
   const input = e.target as HTMLInputElement;
   if (!input.files || input.files.length === 0) return;
+
   console.log("当前所在目录：", currentPath.value);
-  // 判断是否选择了文件夹，获取文件夹路径
-  // 取第一个文件的 webkitRelativePath
+
   const firstFile = input.files[0] as any;
   let topFolder = "";
   if (firstFile.webkitRelativePath) {
     // webkitRelativePath 示例: "MyFolder/sub1/file.txt"
     topFolder = firstFile.webkitRelativePath.split("/")[0];
   }
-  console.log("选择的顶层文件夹：", topFolder);
 
+  console.log("选择上传的文件夹名称：", topFolder);
+
+  // === 先调用后端接口创建文件夹 ===
+  if (topFolder) {
+    try {
+      await axios.post("/api/file/folder", {
+        folderName: topFolder,
+        path: currentPath.value + "/" + topFolder, // 当前路径下创建
+      });
+      console.log("文件夹创建成功:", topFolder);
+    } catch (err) {
+      console.error("创建文件夹失败:", err);
+      return; // 失败直接返回，避免继续上传
+    }
+  }
+
+  // === 设置待上传文件列表 ===
   pendingFiles.value = Array.from(input.files).map((f) => ({
     file: f,
     progress: 0,
@@ -206,6 +236,8 @@ function onUpload(e: Event) {
   }));
 
   showUploadModal.value = true;
+
+  // 重置 input
   if (fileInput.value) fileInput.value.value = "";
 }
 
@@ -255,17 +287,17 @@ function download(item: KBItem) {
   if (item.type === "dir") return;
   const link = document.createElement("a");
   link.href = `/api/kb/download?path=${encodeURIComponent(
-    pathJoin(currentPath.value, item.name)
+    pathJoin(currentPath.value, item.fileName)
   )}`;
-  link.download = item.name;
+  link.download = item.fileName;
   link.click();
 }
 
 // 删除文件或文件夹
 function confirmDelete(item: KBItem) {
-  if (!confirm(`确认删除 "${item.name}" 吗？`)) return;
+  if (!confirm(`确认删除 "${item.fileName}" 吗？`)) return;
   axios
-    .post("/api/kb/delete", { path: pathJoin(currentPath.value, item.name) })
+    .post("/api/kb/delete", { path: pathJoin(currentPath.value, item.fileName) })
     .then(() => loadDir(currentPath.value))
     .catch((err) => alert("删除失败：" + err));
 }
@@ -273,7 +305,7 @@ function confirmDelete(item: KBItem) {
 // 搜索
 const filteredItems = computed(() => {
   if (!searchQuery.value.trim()) return items.value;
-  return items.value.filter((it) => it.name.includes(searchQuery.value.trim()));
+  return items.value.filter((it) => it.fileName.includes(searchQuery.value.trim()));
 });
 
 function doSearch() {
