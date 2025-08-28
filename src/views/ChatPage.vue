@@ -4,7 +4,6 @@
       <div style="margin-top: 0px; font-size: 14px">
         模型:
         <select v-model="model" style="width: 100px">
-          <option value="qwen3:1.7b">qwen3:1.7b</option>
           <option value="qwen3:4b">qwen3:4b</option>
           <option value="qwen3:8b">qwen3:8b</option>
           <option value="deepseek-r1:8b">deepseek-r1:8b</option>

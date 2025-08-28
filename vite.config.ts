@@ -12,7 +12,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',  // 后端服务地址
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api') // 保持路径一致
+        rewrite: (path) => path.replace(/^\/api/, '')  // http://localhost:5174/api/vector/chat 等于访问 http://localhost:8080/vector/chat
       }
     }
   },

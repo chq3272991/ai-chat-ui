@@ -20,6 +20,7 @@
         <input
           ref="fileInput"
           type="file"
+          webkitdirectory
           multiple
           style="display: none"
           @change="onUpload"
@@ -68,6 +69,35 @@
       </table>
     </div>
   </div>
+
+  <div v-if="showUploadModal" class="upload-modal">
+    <div class="modal-content">
+      <h3>上传文件确认</h3>
+
+      <ul class="file-list">
+        <li v-for="pf in pendingFiles" :key="pf.file.name">
+          {{ pf.file.name }} ({{ (pf.file.size / 1024).toFixed(1) }} KB)
+          <div class="progress-container">
+            <div class="progress-bar" :style="{ width: pf.progress + '%' }"></div>
+            <span>{{ pf.progress }}%</span>
+          </div>
+          <span v-if="pf.status === 'done'" style="color: green">✔</span>
+          <span v-if="pf.status === 'error'" style="color: red">✖</span>
+        </li>
+      </ul>
+
+      <div class="modal-actions">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="optimizeText" />
+          优化文本内容
+        </label>
+        <div class="buttons">
+          <button class="kb-btn" @click="confirmUpload">确定上传</button>
+          <button class="kb-btn danger" @click="cancelUpload">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -89,6 +119,17 @@ const searchQuery = ref("");
 const breadcrumbSegments = computed(() =>
   currentPath.value ? currentPath.value.split("/").filter(Boolean) : []
 );
+
+const showUploadModal = ref(false); // 是否显示上传弹窗
+const optimizeText = ref(false); // 勾选框状态
+type PendingFile = {
+  file: File;
+  progress: number; // 0~100
+  status: "pending" | "uploading" | "done" | "error";
+};
+const pendingFiles = ref<PendingFile[]>([]);
+const uploadProgress = ref(0); // 上传进度，0~100
+const isUploading = ref(false); // 是否正在上传
 
 function itemKey(it: KBItem) {
   return currentPath.value + "/" + it.name;
@@ -144,19 +185,69 @@ function triggerUpload() {
   fileInput.value?.click();
 }
 
-async function onUpload(e: Event) {
+function onUpload(e: Event) {
   const input = e.target as HTMLInputElement;
   if (!input.files || input.files.length === 0) return;
-  const form = new FormData();
-  for (const f of Array.from(input.files)) form.append("files", f);
-  form.append("path", currentPath.value);
-
-  try {
-    await axios.post("/api/kb/upload", form);
-    await loadDir(currentPath.value);
-  } finally {
-    if (fileInput.value) fileInput.value.value = "";
+  console.log("当前所在目录：", currentPath.value);
+  // 判断是否选择了文件夹，获取文件夹路径
+  // 取第一个文件的 webkitRelativePath
+  const firstFile = input.files[0] as any;
+  let topFolder = "";
+  if (firstFile.webkitRelativePath) {
+    // webkitRelativePath 示例: "MyFolder/sub1/file.txt"
+    topFolder = firstFile.webkitRelativePath.split("/")[0];
   }
+  console.log("选择的顶层文件夹：", topFolder);
+
+  pendingFiles.value = Array.from(input.files).map((f) => ({
+    file: f,
+    progress: 0,
+    status: "pending",
+  }));
+
+  showUploadModal.value = true;
+  if (fileInput.value) fileInput.value.value = "";
+}
+
+async function confirmUpload() {
+  // if (!optimizeText.value) {
+  //   alert("请勾选“优化文本内容”再上传");
+  //   return;
+  // }
+  if (!pendingFiles.value.length) return;
+
+  for (const pf of pendingFiles.value) {
+    pf.status = "uploading";
+
+    const form = new FormData();
+    console.log("file所在文件夹信息：", pf.file.webkitRelativePath);
+
+    form.append("file", pf.file);
+    form.append("path", currentPath.value);
+    form.append("optimize", String(optimizeText.value));
+
+    try {
+      await axios.post("/api/vector/single-upload", form, {
+        onUploadProgress: (event) => {
+          if (event.total) {
+            pf.progress = Math.round((event.loaded / event.total) * 100);
+          }
+        },
+      });
+      pf.status = "done";
+    } catch (err) {
+      pf.status = "error";
+    }
+  }
+
+  await loadDir(currentPath.value);
+  showUploadModal.value = false;
+  pendingFiles.value = [];
+}
+
+function cancelUpload() {
+  pendingFiles.value = [];
+  showUploadModal.value = false;
 }
 
 // 下载文件
@@ -255,6 +346,23 @@ onMounted(() => loadDir(""));
 .kb-row:hover {
   background: #fafafa;
 }
+.modal-actions {
+  display: flex;
+  justify-content: space-between; /* 左右分开 */
+  align-items: center;
+  margin-top: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.buttons button {
+  margin-left: 6px; /* 两个按钮之间小间距 */
+}
 .kb-btn.small {
   padding: 2px 6px;
   font-size: 12px;
@@ -267,5 +375,75 @@ onMounted(() => loadDir(""));
 .kb-list {
   flex: 1;
   overflow: auto;
+}
+.upload-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 700px;
+}
+
+.progress-container {
+  position: relative;
+  background: #eee;
+  border-radius: 6px;
+  height: 20px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.progress-bar {
+  background: #0070f3;
+  height: 100%;
+  transition: width 0.2s;
+}
+.progress-container span {
+  position: absolute;
+  right: 8px;
+  top: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: #fff;
+}
+
+.file-list {
+  margin: 10px 0;
+  list-style: none;
+  padding: 0;
+}
+.file-list li {
+  margin-bottom: 8px;
+}
+.progress-container {
+  position: relative;
+  background: #eee;
+  border-radius: 6px;
+  height: 16px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.progress-bar {
+  background: #0070f3;
+  height: 100%;
+  transition: width 0.2s;
+}
+.progress-container span {
+  position: absolute;
+  right: 6px;
+  top: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #fff;
 }
 </style>
