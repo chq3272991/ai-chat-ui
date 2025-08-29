@@ -69,9 +69,12 @@
             <td colspan="5">⬆️ 返回上级 ..</td>
           </tr>
           <tr v-for="item in filteredItems" :key="itemKey(item)" class="kb-row">
-            <td @click="item.type === 'dir' && open(item)" style="cursor: pointer">
-              <span v-if="item.type === 'dir'">📁 {{ item.fileName }}</span>
-              <span v-else>📄 {{ item.fileName }}</span>
+            <td
+              @click="item.type === 'dir' && open(item)"
+              style="cursor: pointer; display: flex; align-items: center; gap: 6px"
+            >
+              <component :is="getFileIcon(item)" style="width: 16px; height: 16px" />
+              <span>{{ item.fileName }}</span>
             </td>
             <td>{{ item.type }}</td>
             <td>{{ item.fileSize ?? "-" }}</td>
@@ -187,7 +190,21 @@
 </template>
 
 <script setup lang="ts">
-import { FolderPlus, Upload, FolderUp } from "lucide-vue-next";
+import {
+  FolderPlus,
+  Upload,
+  FolderUp,
+  Folder,
+  File, // 默认文件图标
+  FileIcon, // 可选备用
+  FileText, // 文本文件.txt
+  FileJson, // JSON 文件
+  FileImage, // 图片
+  FileVideo, // 视频
+  FileAudio, // 音频
+  FileMinus, // 其他文件
+} from "lucide-vue-next";
+
 import { computed, onMounted, ref } from "vue";
 import axios from "axios";
 
@@ -195,6 +212,7 @@ type KBItem = {
   id: string;
   fileName: string;
   type: "dir" | "file";
+  fileSuffix: string;
   fileSize?: number;
   createTime?: string;
   updateTime?: string;
@@ -255,21 +273,7 @@ async function loadDir(filePath = "", keyword = "") {
     items.value = data?.data || []; // 直接取 data
     console.log("文件夹和文件列表", items.value);
   } catch (e) {
-    items.value = [
-      {
-        id: "1",
-        fileName: "docs",
-        type: "dir",
-        createTime: "2025-01-01T10:00:00",
-      },
-      {
-        id: "2",
-        fileName: "readme.md",
-        type: "file",
-        fileSize: 3.2 * 1024, // KB 转字节
-        createTime: "2025-01-05T09:12:00",
-      },
-    ];
+    items.value = [];
   }
 }
 
@@ -474,6 +478,45 @@ function doSearch() {
   console.log("搜索关键词:", searchQuery.value);
   // 更新列表接口
   loadDir(currentPath.value, searchQuery.value);
+}
+
+function getFileIcon(item: KBItem) {
+  if (item.type === "dir") return Folder;
+
+  const suffix = item.fileSuffix?.toLowerCase();
+  console.log(suffix);
+  switch (suffix) {
+    case "txt":
+    case "doc":
+    case "docx":
+    case "pdf":
+      return FileText;
+    case "json":
+      return FileJson;
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "bmp":
+      return FileImage;
+    case "mp4":
+    case "mov":
+    case "avi":
+    case "mkv":
+      return FileVideo;
+    case "mp3":
+    case "wav":
+    case "flac":
+      return FileAudio;
+    case "zip":
+    case "rar":
+    case "7z":
+    case "tar":
+    case "gz":
+      return FileMinus;
+    default:
+      return FileMinus; // 其他文件
+  }
 }
 
 onMounted(() => loadDir("", ""));

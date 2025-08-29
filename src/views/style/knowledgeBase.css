@@ -110,8 +110,6 @@
   color: #fff;
 }
 
-
-
 /* 错误提示 */
 .error-msg {
   color: #e53935;
@@ -119,4 +117,9 @@
   margin: 4px 0 0;
   padding-left: 4px;
   line-height: 1.4;
+}
+
+.inline-icon {
+  margin-right: 6px; /* 调整间距 */
+  vertical-align: middle;
 }
