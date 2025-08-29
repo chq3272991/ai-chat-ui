@@ -251,6 +251,10 @@ const showCreateFolderModal = ref(false);
 const createFolderName = ref("");
 const createFolderFailMsg = ref("");
 
+// 下载进度
+// const downloading = ref(false);
+// const downloadProgress = ref(0);
+
 function triggerFileSelect() {
   fileInput.value?.click();
 }
@@ -423,14 +427,47 @@ function cancelUpload() {
   showUploadModal.value = false;
 }
 
-function download(item: KBItem) {
-  if (item.type === "dir") return;
-  const link = document.createElement("a");
-  link.href = `/api/kb/download?path=${encodeURIComponent(
-    pathJoin(currentPath.value, item.fileName)
-  )}`;
-  link.download = item.fileName;
-  link.click();
+async function download(item: KBItem) {
+  try {
+    const response = await axios.get(`/api/file/download?id=${item.id}`, {
+      responseType: "blob",
+      onDownloadProgress: (e) => {
+        if (e.lengthComputable) {
+          // 改为 lengthComputable 判断
+          console.log("打印下载进度：", Math.round((e.loaded / e.total) * 100));
+        }
+      },
+      validateStatus: () => true, // 即使非 2xx 也返回
+    });
+
+    const contentType = response.headers["content-type"];
+    if (!contentType?.includes("application/octet-stream")) {
+      const text = await blobToText(response.data);
+      alert(text);
+      return;
+    }
+
+    const url = window.URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = item.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+  } finally {
+  }
+}
+
+function blobToText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsText(blob, "utf-8");
+  });
 }
 
 function confirmDelete(item: KBItem) {
