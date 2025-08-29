@@ -17,7 +17,10 @@
       </div>
       <div>
         <!-- 选择文件 -->
-        <button @click="triggerFileSelect">选择文件</button>
+        <button @click="openFolderModel">新建文件夹</button>
+
+        <!-- 选择文件 -->
+        <button @click="triggerFileSelect">上传文件</button>
         <input
           type="file"
           ref="fileInput"
@@ -27,7 +30,7 @@
         />
 
         <!-- 选择文件夹 -->
-        <button @click="triggerFolderSelect">选择文件夹</button>
+        <button @click="triggerFolderSelect">上传文件夹</button>
         <input
           type="file"
           ref="folderInput"
@@ -55,10 +58,7 @@
             <td colspan="5">⬆️ 返回上级 ..</td>
           </tr>
           <tr v-for="item in filteredItems" :key="itemKey(item)" class="kb-row">
-            <td
-              @click="item.type === 'dir' ? open(item) : download(item)"
-              style="cursor: pointer"
-            >
+            <td @click="item.type === 'dir' && open(item)" style="cursor: pointer">
               <span v-if="item.type === 'dir'">📁 {{ item.fileName }}</span>
               <span v-else>📄 {{ item.fileName }}</span>
             </td>
@@ -112,7 +112,7 @@
 
   <!-- 删除确认弹窗 -->
   <div v-if="showDeleteModal" class="upload-modal">
-    <div class="modal-content">
+    <div class="modal-content-mid">
       <h3>确认删除</h3>
       <p>确定要删除 "{{ deleteTarget?.fileName }}" 吗？</p>
 
@@ -141,6 +141,34 @@
             确认删除
           </button>
           <button class="kb-btn" @click="cancelDelete">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新建文件夹弹窗 -->
+  <div v-if="showCreateFolderModal" class="upload-modal">
+    <div class="modal-content-mid">
+      <h3>新建文件夹</h3>
+
+      <input
+        type="text"
+        v-model="createFolderName"
+        placeholder="请输入文件夹名称"
+        class="kb-input"
+      />
+
+      <p
+        v-if="createFolderFailMsg !== ''"
+        class="error-msg"
+        v-html="createFolderFailMsg"
+      ></p>
+
+      <div class="modal-actions">
+        <div></div>
+        <div class="buttons">
+          <button class="kb-btn danger" @click="createFolder">确认创建</button>
+          <button class="kb-btn" @click="cancelCreateFolder">取消</button>
         </div>
       </div>
     </div>
@@ -182,11 +210,16 @@ const folderInput = ref<HTMLInputElement | null>(null);
 // 是否删除向量库内容（删除弹窗用）
 const deleteVector = ref(true);
 const showDeleteModal = ref(false);
+
 const deleteTarget = ref<KBItem | null>(null);
 const deleteConfirmInput = ref("");
 const canDelete = computed(() => {
   return deleteConfirmInput.value === deleteTarget.value?.fileName;
 });
+
+const showCreateFolderModal = ref(false);
+const createFolderName = ref("");
+const createFolderFailMsg = ref("");
 
 function triggerFileSelect() {
   fileInput.value?.click();
@@ -204,9 +237,9 @@ function pathJoin(base: string, name: string) {
   return [base, name].filter(Boolean).join("/");
 }
 
-async function loadDir(filePath = "") {
+async function loadDir(filePath = "", keyword = "") {
   try {
-    const { data } = await axios.get("/api/file/list", { params: { filePath } });
+    const { data } = await axios.get("/api/file/list", { params: { filePath, keyword } });
     items.value = data?.data || []; // 直接取 data
     console.log("文件夹和文件列表", items.value);
   } catch (e) {
@@ -231,7 +264,7 @@ async function loadDir(filePath = "") {
 function open(it: KBItem) {
   if (it.type === "dir") {
     currentPath.value = pathJoin(currentPath.value, it.fileName);
-    loadDir(currentPath.value);
+    loadDir(currentPath.value, "");
   } else {
     download(it);
   }
@@ -242,7 +275,7 @@ function goUp() {
   const parts = currentPath.value.split("/").filter(Boolean);
   parts.pop();
   currentPath.value = parts.join("/");
-  loadDir(currentPath.value);
+  loadDir(currentPath.value, "");
 }
 
 function goRoot() {
@@ -253,16 +286,43 @@ function goRoot() {
 function goToIndex(idx: number) {
   const parts = currentPath.value.split("/").filter(Boolean);
   currentPath.value = parts.slice(0, idx + 1).join("/");
-  loadDir(currentPath.value);
+  loadDir(currentPath.value, "");
 }
 
-/** 单按钮，支持文件 + 文件夹上传 */
-function triggerUpload() {
-  const input = fileInput.value!;
-  input.value = ""; // 清空上次选择
-  input.setAttribute("multiple", ""); // 支持多文件
-  input.setAttribute("webkitdirectory", ""); // 同时允许选文件夹
-  input.click();
+function openFolderModel() {
+  showCreateFolderModal.value = true;
+  createFolderName.value = "";
+}
+async function createFolder() {
+  console.log("新建文件夹:", createFolderName.value);
+  try {
+    const response = await axios.post("/api/file/folder", {
+      folderName: createFolderName.value,
+      dirPath: currentPath.value, // 当前路径下创建
+    });
+    // 解析响应数据
+    const result = response.data;
+    if (result.success) {
+      // 处理成功情况
+      console.log("文件夹创建成功:", result.message);
+      // 可以在这里添加成功提示，如弹框提示用户
+      // alert(result.message);
+      showCreateFolderModal.value = false;
+      createFolderName.value = "";
+      // 通常这里还需要刷新文件列表，显示新创建的文件夹
+      loadDir(currentPath.value, "");
+    } else {
+      // 处理业务逻辑失败情况（如已存在同名文件夹）
+      console.error("创建文件夹失败:", result.message);
+      createFolderFailMsg.value = result.message;
+      // 显示错误信息给用户
+      // alert(result.message);
+    }
+  } catch (err) {
+    // 处理网络错误或服务器异常
+    console.error("创建文件夹请求失败:", err);
+    createFolderFailMsg.value = "网络错误，创建文件夹失败";
+  }
 }
 
 function onUpload(e: Event) {
@@ -377,7 +437,7 @@ async function doDelete() {
       id: deleteTarget.value.id,
       removeVector: deleteVector.value, // ✅ 根据勾选传参
     });
-    await loadDir(currentPath.value);
+    await loadDir(currentPath.value, "");
   } catch (err) {
     alert("删除失败：" + err);
   } finally {
@@ -387,6 +447,12 @@ async function doDelete() {
   }
 }
 
+function cancelCreateFolder() {
+  showCreateFolderModal.value = false;
+  createFolderName.value = "";
+  createFolderFailMsg.value = "";
+}
+
 const filteredItems = computed(() => {
   if (!searchQuery.value.trim()) return items.value;
   return items.value.filter((it) => it.fileName.includes(searchQuery.value.trim()));
@@ -394,9 +460,11 @@ const filteredItems = computed(() => {
 
 function doSearch() {
   console.log("搜索关键词:", searchQuery.value);
+  // 更新列表接口
+  loadDir(currentPath.value, searchQuery.value);
 }
 
-onMounted(() => loadDir(""));
+onMounted(() => loadDir("", ""));
 </script>
 
 <style scoped>
@@ -507,6 +575,13 @@ onMounted(() => loadDir(""));
   padding: 20px;
   border-radius: 8px;
   width: 700px;
+}
+
+.modal-content-mid {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 500px;
 }
 
 .progress-container {
