@@ -109,6 +109,42 @@
       </div>
     </div>
   </div>
+
+  <!-- 删除确认弹窗 -->
+  <div v-if="showDeleteModal" class="upload-modal">
+    <div class="modal-content">
+      <h3>确认删除</h3>
+      <p>确定要删除 "{{ deleteTarget?.fileName }}" 吗？</p>
+
+      <input
+        type="text"
+        v-model="deleteConfirmInput"
+        placeholder="请输入文件/文件夹名称确认"
+        class="kb-input"
+      />
+
+      <p
+        v-if="deleteConfirmInput && deleteConfirmInput !== deleteTarget?.fileName"
+        class="error-msg"
+      >
+        输入不一致，请正确输入文件/文件夹名称
+      </p>
+
+      <div class="modal-actions">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="deleteVector" />
+          同时删除向量库内容
+        </label>
+
+        <div class="buttons">
+          <button class="kb-btn danger" @click="doDelete" :disabled="!canDelete">
+            确认删除
+          </button>
+          <button class="kb-btn" @click="cancelDelete">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -143,6 +179,14 @@ type PendingFile = {
 const pendingFiles = ref<PendingFile[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
 const folderInput = ref<HTMLInputElement | null>(null);
+// 是否删除向量库内容（删除弹窗用）
+const deleteVector = ref(true);
+const showDeleteModal = ref(false);
+const deleteTarget = ref<KBItem | null>(null);
+const deleteConfirmInput = ref("");
+const canDelete = computed(() => {
+  return deleteConfirmInput.value === deleteTarget.value?.fileName;
+});
 
 function triggerFileSelect() {
   fileInput.value?.click();
@@ -314,11 +358,33 @@ function download(item: KBItem) {
 }
 
 function confirmDelete(item: KBItem) {
-  if (!confirm(`确认删除 "${item.fileName}" 吗？`)) return;
-  axios
-    .post("/api/kb/delete", { path: pathJoin(currentPath.value, item.fileName) })
-    .then(() => loadDir(currentPath.value))
-    .catch((err) => alert("删除失败：" + err));
+  deleteTarget.value = item;
+  deleteVector.value = true; // 默认勾选
+  showDeleteModal.value = true;
+  deleteConfirmInput.value = "";
+}
+
+function cancelDelete() {
+  deleteTarget.value = null;
+  showDeleteModal.value = false;
+  deleteConfirmInput.value = "";
+}
+
+async function doDelete() {
+  if (!deleteTarget.value) return;
+  try {
+    await axios.post("/api/file/delete", {
+      id: deleteTarget.value.id,
+      removeVector: deleteVector.value, // ✅ 根据勾选传参
+    });
+    await loadDir(currentPath.value);
+  } catch (err) {
+    alert("删除失败：" + err);
+  } finally {
+    showDeleteModal.value = false;
+    deleteTarget.value = null;
+    deleteConfirmInput.value = "";
+  }
 }
 
 const filteredItems = computed(() => {
@@ -493,5 +559,35 @@ onMounted(() => loadDir(""));
   font-size: 12px;
   line-height: 16px;
   color: #fff;
+}
+.kb-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* 删除确认输入框样式 */
+.kb-input {
+  width: 80%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+
+.kb-input:focus {
+  border-color: #0070f3;
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.15);
+}
+
+/* 错误提示样式 */
+.error-msg {
+  color: #e53935;
+  font-size: 13px;
+  margin: 4px 0 0;
+  padding-left: 4px;
+  line-height: 1.4;
 }
 </style>
