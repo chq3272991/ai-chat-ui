@@ -1,14 +1,19 @@
+<style scoped>
+@import "./style/common.css";
+@import "./style/chatPage.css";
+</style>
+
 <template>
   <div class="container">
     <header>
-      <div style="margin-top: 0px; font-size: 14px">
+      <div class="kb-actions">
         模型:
         <select v-model="model" style="width: 100px">
           <option value="qwen3:4b">qwen3:4b</option>
           <option value="qwen3:8b">qwen3:8b</option>
           <option value="deepseek-r1:8b">deepseek-r1:8b</option>
         </select>
-        <button @click="reset">重置</button>
+        <button @click="reset" class="kb-btn">重置</button>
       </div>
     </header>
 

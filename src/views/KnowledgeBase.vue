@@ -1,3 +1,8 @@
+<style scoped>
+@import "./style/common.css";
+@import "./style/knowledgeBase.css";
+</style>
+
 <template>
   <div class="kb-container">
     <!-- 工具栏：面包屑 + 搜索 + 上传 -->
@@ -15,12 +20,16 @@
           <button class="kb-btn" @click="doSearch">搜索</button>
         </div>
       </div>
-      <div>
-        <!-- 选择文件 -->
-        <button @click="openFolderModel">新建文件夹</button>
+      <div class="kb-actions">
+        <button class="kb-btn primary" @click="openFolderModel">
+          <FolderPlus size="16" />
+          新建文件夹
+        </button>
 
-        <!-- 选择文件 -->
-        <button @click="triggerFileSelect">上传文件</button>
+        <button class="kb-btn success" @click="triggerFileSelect">
+          <Upload size="16" />
+          上传文件
+        </button>
         <input
           type="file"
           ref="fileInput"
@@ -29,8 +38,10 @@
           @change="onUpload"
         />
 
-        <!-- 选择文件夹 -->
-        <button @click="triggerFolderSelect">上传文件夹</button>
+        <button class="kb-btn success" @click="triggerFolderSelect">
+          <FolderUp size="16" />
+          上传文件夹
+        </button>
         <input
           type="file"
           ref="folderInput"
@@ -103,8 +114,8 @@
           优化文本内容
         </label>
         <div class="buttons">
-          <button class="kb-btn" @click="confirmUpload">确定上传</button>
-          <button class="kb-btn danger" @click="cancelUpload">取消</button>
+          <button class="kb-btn primary" @click="confirmUpload">确定上传</button>
+          <button class="kb-btn" @click="cancelUpload">取消</button>
         </div>
       </div>
     </div>
@@ -167,7 +178,7 @@
       <div class="modal-actions">
         <div></div>
         <div class="buttons">
-          <button class="kb-btn danger" @click="createFolder">确认创建</button>
+          <button class="kb-btn primary" @click="createFolder">确认创建</button>
           <button class="kb-btn" @click="cancelCreateFolder">取消</button>
         </div>
       </div>
@@ -176,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { FolderPlus, Upload, FolderUp } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import axios from "axios";
 
@@ -466,203 +478,3 @@ function doSearch() {
 
 onMounted(() => loadDir("", ""));
 </script>
-
-<style scoped>
-.kb-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 10px;
-}
-.kb-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.kb-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.kb-breadcrumbs {
-  font-size: 14px;
-}
-.kb-breadcrumbs .crumb {
-  cursor: pointer;
-  color: #0070f3;
-}
-.kb-breadcrumbs .sep {
-  margin: 0 6px;
-  color: #999;
-}
-.kb-search input {
-  padding: 4px 8px;
-  font-size: 13px;
-}
-.kb-search button {
-  margin-left: 4px;
-  padding: 4px 8px;
-  font-size: 13px;
-}
-.kb-actions .kb-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
-}
-.kb-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.kb-table th,
-.kb-table td {
-  border-bottom: 1px solid #eee;
-  padding: 8px;
-}
-.kb-row {
-  cursor: pointer;
-}
-.kb-row:hover {
-  background: #fafafa;
-}
-.modal-actions {
-  display: flex;
-  justify-content: space-between; /* 左右分开 */
-  align-items: center;
-  margin-top: 12px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.buttons button {
-  margin-left: 6px; /* 两个按钮之间小间距 */
-}
-.kb-btn.small {
-  padding: 2px 6px;
-  font-size: 12px;
-  margin-right: 4px;
-}
-.kb-btn.danger {
-  background-color: #e53935;
-  color: #fff;
-}
-.kb-list {
-  flex: 1;
-  overflow: auto;
-}
-.upload-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.modal-content {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  width: 700px;
-}
-
-.modal-content-mid {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  width: 500px;
-}
-
-.progress-container {
-  position: relative;
-  background: #eee;
-  border-radius: 6px;
-  height: 20px;
-  margin-top: 12px;
-  overflow: hidden;
-}
-.progress-bar {
-  background: #0070f3;
-  height: 100%;
-  transition: width 0.2s;
-}
-.progress-container span {
-  position: absolute;
-  right: 8px;
-  top: 0;
-  font-size: 12px;
-  line-height: 20px;
-  color: #fff;
-}
-
-.file-list {
-  margin: 10px 0;
-  list-style: none;
-  padding: 0;
-}
-.file-list li {
-  margin-bottom: 8px;
-}
-.progress-container {
-  position: relative;
-  background: #eee;
-  border-radius: 6px;
-  height: 16px;
-  overflow: hidden;
-  margin-top: 4px;
-}
-.progress-bar {
-  background: #0070f3;
-  height: 100%;
-  transition: width 0.2s;
-}
-.progress-container span {
-  position: absolute;
-  right: 6px;
-  top: 0;
-  font-size: 12px;
-  line-height: 16px;
-  color: #fff;
-}
-.kb-btn[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-/* 删除确认输入框样式 */
-.kb-input {
-  width: 80%;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  margin-top: 8px;
-  margin-bottom: 6px;
-}
-
-.kb-input:focus {
-  border-color: #0070f3;
-  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.15);
-}
-
-/* 错误提示样式 */
-.error-msg {
-  color: #e53935;
-  font-size: 13px;
-  margin: 4px 0 0;
-  padding-left: 4px;
-  line-height: 1.4;
-}
-</style>

@@ -1,0 +1,122 @@
+.kb-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px;
+}
+
+.kb-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.kb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 面包屑 */
+.kb-breadcrumbs {
+  font-size: 14px;
+}
+.kb-breadcrumbs .crumb {
+  cursor: pointer;
+  color: #0070f3;
+}
+.kb-breadcrumbs .sep {
+  margin: 0 6px;
+  color: #999;
+}
+
+/* 搜索框 */
+.kb-search input {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.kb-search button {
+  margin-left: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+/* 表格 */
+.kb-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.kb-table th,
+.kb-table td {
+  border-bottom: 1px solid #eee;
+  padding: 8px;
+}
+.kb-row {
+  cursor: pointer;
+}
+.kb-row:hover {
+  background: #fafafa;
+}
+
+
+/* 复选框 */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* 模态框按钮 */
+.buttons button {
+  margin-left: 6px;
+}
+
+/* 列表 */
+.kb-list {
+  flex: 1;
+  overflow: auto;
+}
+.file-list {
+  margin: 10px 0;
+  list-style: none;
+  padding: 0;
+}
+.file-list li {
+  margin-bottom: 8px;
+}
+
+/* 进度条 */
+.progress-container {
+  position: relative;
+  background: #eee;
+  border-radius: 6px;
+  height: 16px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-bar {
+  background: #0070f3;
+  height: 100%;
+  transition: width 0.2s;
+}
+.progress-container span {
+  position: absolute;
+  right: 6px;
+  top: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #fff;
+}
+
+
+
+/* 错误提示 */
+.error-msg {
+  color: #e53935;
+  font-size: 13px;
+  margin: 4px 0 0;
+  padding-left: 4px;
+  line-height: 1.4;
+}
