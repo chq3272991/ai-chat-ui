@@ -15,11 +15,44 @@
   padding: 0;         /* 去掉原来的 padding，避免总高度超出 */
 }
 
-
 /* header 高度自适应内容 */
 header {
   padding: 1rem;
   flex-shrink: 0;     /* 不缩小 */
+}
+
+.kb-actions p {
+  margin: 0;
+  font-weight: 500;
+  font-size: 13px;
+  color: #555;
+  line-height: 2.3;   /* 或设置成和 select 高度一致 */
+}
+
+/* 下拉框美化 */
+.kb-actions select {
+  width: 140px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.kb-actions select:hover {
+  border-color: #0070f3;
+}
+.kb-actions select:focus {
+  outline: none;
+  border-color: #0070f3;
+  box-shadow: 0 0 0 2px rgba(0,112,243,0.15);
+}
+
+/* 按钮重用 kb-btn */
+.kb-actions .kb-btn {
+  padding: 6px 14px;
+  font-size: 13px;
 }
 
 /* main 消息展示区 - 占用剩余空间，滚动 */

@@ -7,8 +7,8 @@
   <div class="container">
     <header>
       <div class="kb-actions">
-        模型:
-        <select v-model="model" style="width: 100px">
+        <p>模型:</p>
+        <select v-model="model">
           <option value="qwen3:4b">qwen3:4b</option>
           <option value="qwen3:8b">qwen3:8b</option>
           <option value="deepseek-r1:8b">deepseek-r1:8b</option>
