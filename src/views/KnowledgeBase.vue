@@ -207,6 +207,7 @@ import {
 
 import { computed, onMounted, ref } from "vue";
 import axios from "axios";
+import { ElMessage } from "element-plus";
 
 type KBItem = {
   id: string;
@@ -404,16 +405,32 @@ async function confirmUpload() {
     form.append("optimize", String(optimizeText.value));
 
     try {
-      await axios.post("/api/vector/single-upload", form, {
+      const response = await axios.post("/api/vector/single-upload", form, {
         onUploadProgress: (event) => {
           if (event.total) {
             pf.progress = Math.round((event.loaded / event.total) * 100);
           }
         },
       });
-      pf.status = "done";
+      // 处理接口响应
+      const { success, message } = response.data;
+      if (success) {
+        pf.status = "done";
+        // 可添加成功提示，如：ElMessage.success(`${pf.file.name} 上传成功`);
+      } else {
+        pf.status = "error";
+        // 接口返回成功标识为false的情况
+        console.error(`上传失败: ${message}`);
+        // 可添加错误提示，如：ElMessage.error(`${pf.file.name} 上传失败: ${message}`);
+        ElMessage.error(`${pf.file.name} 上传失败: ${message}`);
+      }
     } catch (err) {
       pf.status = "error";
+      // 提示错误信息
+      // 解析错误信息
+      let errorMsg = "上传失败，请重试";
+      console.error(`文件 ${pf.file.name} 上传错误: ${errorMsg}`);
+      // 可添加错误提示，如：ElMessage.error(`${pf.file.name}: ${errorMsg}`);
     }
   }
 
@@ -443,7 +460,7 @@ async function download(item: KBItem) {
     const contentType = response.headers["content-type"];
     if (!contentType?.includes("application/octet-stream")) {
       const text = await blobToText(response.data);
-      alert(text);
+      ElMessage.error(text);
       return;
     }
 
