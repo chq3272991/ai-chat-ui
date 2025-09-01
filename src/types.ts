@@ -25,4 +25,5 @@ export interface ChatRequestBody {
     messages: ChatMessage[]
     options?: ChatOptions
     stream?: boolean
+    conversationId: string
 }

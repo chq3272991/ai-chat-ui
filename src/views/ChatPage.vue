@@ -212,11 +212,17 @@ function removeFile(index: number) {
 
   // 移除对应 images 或 others
   if (index < images.value.length) {
+    // 移除图片
     images.value.splice(index, 1);
+    pendingImages.splice(index, 1);
   } else {
+    // 移除其他文件
     const othersIndex = index - images.value.length;
     others.value.splice(othersIndex, 1);
+    pendingFiles.splice(othersIndex, 1);
   }
+  // 同步 selectedFiles
+  selectedFiles.value.splice(index, 1);
 }
 
 watch(model, (v) => (store.model = v));

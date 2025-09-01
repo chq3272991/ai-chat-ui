@@ -1,5 +1,15 @@
 import type { ChatRequestBody } from '@/types'
 
+// 模块作用域变量，页面未刷新前一直保持
+let fixedConversationId: string | null = null
+
+function getConversationId() {
+    if (!fixedConversationId) {
+        // 可以用简单随机 ID 或者 UUID
+        fixedConversationId = 'conv-' + Math.random().toString(36).substring(2, 10)
+    }
+    return fixedConversationId
+}
 
 export async function streamChat(
     body: ChatRequestBody,
@@ -16,6 +26,27 @@ export async function streamChat(
     }
 ) {
     try {
+        // 如果需要在请求中传 conversationId，可以这样加：
+        const conversationId = getConversationId()
+        body.conversationId = conversationId // 假设你的接口支持这个字段
+
+        // === 新增：只保留每个角色的最新一条消息 ===
+        const latest: Record<string, typeof body.messages[0]> = {}
+        for (let i = body.messages.length - 1; i >= 0; i--) {
+            const msg = body.messages[i]
+            // 判断 role 是否需要处理
+            if (!['user', 'assistant', 'system'].includes(msg.role)) continue
+            // 仅当该角色还没有被记录，并且内容非空时才记录
+            const content = msg.content ?? ''
+            if (!latest[msg.role] && content.trim() !== '') {
+                latest[msg.role] = msg
+            }
+        }
+        body.messages = ['system', 'user', 'assistant']
+            .map(role => latest[role])
+            .filter(Boolean)
+
+        // === 原来的请求逻辑 ===
         const resp = await fetch('/api/vector/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
@@ -23,20 +54,16 @@ export async function streamChat(
             signal,
         })
 
-
         if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`)
-
 
         const reader = resp.body.getReader()
         const decoder = new TextDecoder('utf-8')
         let buffer = ''
 
-
         while (true) {
             const { done, value } = await reader.read()
             if (done) break
             buffer += decoder.decode(value, { stream: true })
-
 
             const parts = buffer.split('\n')
             buffer = parts.pop() || ''
@@ -52,7 +79,6 @@ export async function streamChat(
                 }
             }
         }
-
 
         const tail = buffer.trim()
         if (tail) onToken(tail)
