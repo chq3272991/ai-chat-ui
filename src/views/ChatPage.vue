@@ -113,7 +113,7 @@
             <button
               type="button"
               v-if="store.sending"
-              @click="store.stop()"
+              @click="handleStop"
               class="chat-stop-btn"
             >
               停止
@@ -175,6 +175,23 @@ function fileToDataUrl(file: File) {
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+function handleStop() {
+  store.stop({
+    onStopped: () => {
+      console.log("用户主动停止对话");
+      // ✅ 这里可以隐藏停止按钮 / 显示“已停止”状态
+      // ✅ 找到最后一条 assistant 消息的下标
+      const lastIndex = store.messages.length - 1;
+      if (lastIndex >= 0 && store.messages[lastIndex].role === "assistant") {
+        // 停止时立即关掉“思考中”
+        thinkLoading[lastIndex] = false;
+        thinkOpen[lastIndex] = false;
+        thinkTime[lastIndex] = 0;
+      }
+    },
   });
 }
 

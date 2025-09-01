@@ -54,6 +54,7 @@ export const useChatStore = defineStore('chat', {
             onAssistantStart?: (aiIndex: number) => void
             onAssistantDone?: (aiIndex: number) => void
             onError?: (e: any) => void
+            onStopped?: () => void   // ✅ 新增钩子
         }) {
             if (this.sending) return
             this.error = ''
@@ -82,15 +83,26 @@ export const useChatStore = defineStore('chat', {
                 onError: (e) => {
                     this.sending = false
                     this.controller = null
+
+                    // 🚀 关键：忽略用户主动停止导致的异常
+                    if (e?.name === 'AbortError' || String(e).includes('aborted')) {
+                        // 不写入 this.error，保持静默
+                        return
+                    }
+
+                    // 其他才是真正错误
                     this.error = e?.message || String(e)
                     hooks?.onError?.(e)
                 },
             })
         },
-        stop() {
-            this.controller?.abort()
-            this.sending = false
-            this.controller = null
+        stop(hooks?: { onStopped?: () => void }) {
+            if (this.controller) {
+                this.controller.abort()
+                this.sending = false
+                this.controller = null
+                hooks?.onStopped?.()   // ✅ 主动触发 onStopped
+            }
         },
         clear() {
             this.messages = []
