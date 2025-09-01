@@ -59,6 +59,18 @@
   background: #fafafa;
 }
 
+.kb-row td {
+  padding: 8px 12px; /* 上下8px、左右12px内边距，可根据UI调整 */
+  border-bottom: 1px solid #eee; /* 添下边线，区分行 */
+}
+
+/* 3. 核心：返回上级行左对齐 + 样式优化 */
+.kb-up-row td {
+  text-align: left !important; /* 强制左对齐，覆盖可能的全局居中样式 */
+  color: rgb(0, 112, 243); /* 蓝色文字，提示可点击 */
+  cursor: pointer; /* 鼠标悬浮变指针，强化交互提示 */
+  background-color: #f5f7fa; /* 浅背景色，视觉上区分“操作行”与“数据行” */
+}
 
 /* 复选框 */
 .checkbox-label {
@@ -66,6 +78,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  font-size: 13px;
 }
 
 /* 模态框按钮 */

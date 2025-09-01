@@ -29,7 +29,7 @@
 }
 
 .header-p {
-  padding: 0.5rem;
+  padding: 0rem;
   flex-shrink: 0;
 }
 

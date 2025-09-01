@@ -65,7 +65,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="currentPath" class="kb-row" @click="goUp">
+          <tr v-if="currentPath" class="kb-row kb-up-row" @click="goUp">
             <td colspan="5">⬆️ 返回上级 ..</td>
           </tr>
           <tr v-for="item in filteredItems" :key="itemKey(item)" class="kb-row">
@@ -112,10 +112,17 @@
       </ul>
 
       <div class="modal-actions">
-        <label class="checkbox-label">
-          <input type="checkbox" v-model="optimizeText" />
-          优化文本内容
-        </label>
+        <div>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="optimizeText" />
+            优化内容
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="rewriteText" />
+            允许覆盖
+          </label>
+        </div>
+
         <div class="buttons">
           <button class="kb-btn primary" @click="confirmUpload">确定上传</button>
           <button class="kb-btn" @click="cancelUpload">取消</button>
@@ -230,6 +237,7 @@ const breadcrumbSegments = computed(() =>
 
 const showUploadModal = ref(false);
 const optimizeText = ref(false);
+const rewriteText = ref(false);
 type PendingFile = {
   file: File;
   progress: number;
@@ -403,6 +411,7 @@ async function confirmUpload() {
     form.append("file", pf.file);
     form.append("path", currentPath.value);
     form.append("optimize", String(optimizeText.value));
+    form.append("rewrite", String(rewriteText.value));
 
     try {
       const response = await axios.post("/api/vector/single-upload", form, {
