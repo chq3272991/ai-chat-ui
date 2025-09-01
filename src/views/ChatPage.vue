@@ -75,6 +75,14 @@
 
     <!-- 底部输入框 -->
     <footer class="input-area">
+      <!-- 文件名预览放在 form 外 -->
+      <!-- 文件名预览放在 form 外 -->
+      <ul v-if="previewNames.length" class="file-names-list">
+        <li v-for="(name, index) in previewNames" :key="index" class="file-name-item">
+          {{ name }}
+          <button type="button" class="delete-btn" @click="removeFile(index)">✕</button>
+        </li>
+      </ul>
       <form
         @submit.prevent="onSubmit"
         style="display: flex; flex-direction: column; height: 100%"
@@ -88,10 +96,35 @@
             align-items: center;
           "
         >
-          <FilePicker @picked="onPicked" />
-          <div>
-            <button type="button" v-if="store.sending" @click="store.stop()">停止</button>
-            <button type="submit" :disabled="store.sending || !input.trim()">发送</button>
+          <div class="upload-wrapper">
+            <!-- 上传按钮 -->
+            <label class="upload-label">
+              <Upload class="icon" />
+              <input
+                type="file"
+                multiple
+                @change="onChange"
+                ref="fileInput"
+                class="file-input"
+              />
+            </label>
+          </div>
+          <div class="kb-actions">
+            <button
+              type="button"
+              v-if="store.sending"
+              @click="store.stop()"
+              class="chat-stop-btn"
+            >
+              停止
+            </button>
+            <button
+              type="submit"
+              :disabled="store.sending || !input.trim()"
+              class="chat-send-btn"
+            >
+              发送
+            </button>
           </div>
         </div>
         <p v-if="store.error" class="error">{{ store.error }}</p>
@@ -104,10 +137,10 @@
 import MarkdownIt from "markdown-it";
 import { ref, watch, reactive, watchEffect } from "vue";
 import { useChatStore } from "@/stores/chat";
-import FilePicker from "@/components/FilePicker.vue";
+import { ElButton } from "element-plus";
+import { Upload } from "lucide-vue-next"; // 上传图标
 
 const store = useChatStore();
-const input = ref("");
 const thinkOpen = reactive<Record<number, boolean>>({});
 const thinkTime = reactive<Record<number, number>>({}); // 存储每条消息的耗时
 const thinkLoading = reactive<Record<number, boolean>>({}); // 标记是否请求中
@@ -116,6 +149,75 @@ const model = ref(store.model || DEFAULT_MODEL);
 
 const loadingDots = ref(".");
 let dotTimer: any;
+
+const input = ref("");
+const previewNames = ref<string[]>([]);
+const images = ref<string[]>([]);
+const others = ref<{ name: string; type: string; dataUrl: string }[]>([]);
+const selectedFiles = ref<File[]>([]);
+
+// FilePicker 选择文件后回调
+function onPicked(payload: {
+  images: string[];
+  files: { name: string; type: string; dataUrl: string }[];
+}) {
+  images.value = payload.images;
+  others.value = payload.files;
+  previewNames.value = [
+    ...images.value.map((_, i) => `图片${i + 1}`),
+    ...others.value.map((f) => f.name),
+  ];
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onChange(e: Event) {
+  const inputEl = e.target as HTMLInputElement;
+  const files = inputEl.files ? Array.from(inputEl.files) : [];
+
+  // 累加文件
+  selectedFiles.value = selectedFiles.value.concat(files);
+
+  // 更新文件名预览
+  previewNames.value = selectedFiles.value.map((f) => f.name);
+
+  // 处理 images / others
+  const imgs: string[] = [];
+  const othrs: { name: string; type: string; dataUrl: string }[] = [];
+
+  for (const f of selectedFiles.value) {
+    const dataUrl = await fileToDataUrl(f);
+    if (f.type.startsWith("image/")) imgs.push(dataUrl);
+    else othrs.push({ name: f.name, type: f.type, dataUrl });
+  }
+
+  // 同步到全局待发送变量
+  pendingImages = imgs;
+  pendingFiles = othrs;
+
+  // 重置 input，保证下次选择同名文件也会触发 change
+  inputEl.value = "";
+}
+
+function removeFile(index: number) {
+  // 移除预览
+  previewNames.value.splice(index, 1);
+
+  // 移除对应 images 或 others
+  if (index < images.value.length) {
+    images.value.splice(index, 1);
+  } else {
+    const othersIndex = index - images.value.length;
+    others.value.splice(othersIndex, 1);
+  }
+}
 
 watch(model, (v) => (store.model = v));
 
@@ -155,13 +257,13 @@ watch(model, (v) => (store.model = v));
 let pendingImages: string[] = [];
 let pendingFiles: { name: string; type: string; dataUrl: string }[] = [];
 
-function onPicked(payload: {
-  images: string[];
-  files: { name: string; type: string; dataUrl: string }[];
-}) {
-  pendingImages = payload.images;
-  pendingFiles = payload.files;
-}
+// function onPicked(payload: {
+//   images: string[];
+//   files: { name: string; type: string; dataUrl: string }[];
+// }) {
+//   pendingImages = payload.images;
+//   pendingFiles = payload.files;
+// }
 
 // 解析 data:{} → 提取 JSON.text
 function extractTextFromEvent(raw: string): string {
