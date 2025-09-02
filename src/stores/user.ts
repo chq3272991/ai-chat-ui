@@ -16,7 +16,7 @@ export const useUserStore = defineStore("user", {
          */
         async loginApi(username: string, password: string) {
             try {
-                const res = await axios.post("/api/user/login", {
+                const res = await axios.post("/user/login", {
                     username,
                     password,
                 }, {
@@ -42,7 +42,7 @@ export const useUserStore = defineStore("user", {
          */
         async registerApi(username: string, password: string, email: string) {
             try {
-                const res = await axios.post("/api/user/register", {
+                const res = await axios.post("/user/register", {
                     username,
                     password,
                     email,

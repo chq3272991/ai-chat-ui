@@ -46,10 +46,12 @@ export async function streamChat(
             .map(role => latest[role])
             .filter(Boolean)
 
+        const token = localStorage.getItem("token");
+
         // === 原来的请求逻辑 ===
         const resp = await fetch('/api/vector/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(body),
             signal,
         })

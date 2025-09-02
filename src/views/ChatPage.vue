@@ -211,12 +211,12 @@ onMounted(() => {
 });
 
 /**
- * 请求历史聊天列表接口 /api/chat/history
+ * 请求历史聊天列表接口 /chat/history
  */
 async function fetchChatHistory() {
   historyLoading.value = true;
   try {
-    const response = await axios.get("/api/chat/history");
+    const response = await axios.get("/chat/history");
     // 假设接口返回格式：{ code: 200, data: [{ id: "xxx", title: "聊天标题", createTime: "xxx" }] }
     if (response.data.code === 200) {
       historyList.value = response.data.data;
@@ -262,7 +262,7 @@ async function handleSelectHistory(historyItem: any) {
   historyLoading.value = true;
   try {
     // 假设请求单个历史聊天详情接口（需后端提供）
-    const response = await axios.get(`/api/chat/history/${historyItem.id}`);
+    const response = await axios.get(`/chat/history/${historyItem.id}`);
     if (response.data.code === 200) {
       const chatRecords = response.data.data.messages; // 历史消息列表
       // 清空当前消息并加载历史消息
@@ -406,9 +406,10 @@ function renderNormalMarkdown(lines: string[]) {
 }
 
 function parseText(text: string) {
-  const thinkMatch = text.match(/([\s\S]*?)<\/think>/);
+  const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
   const thinkText = thinkMatch ? thinkMatch[1].trim() : "";
-  const normalText = text.replace(/[\s\S]*?<\/think>/, "").trim();
+  //const normalText = text.replace(/[\s\S]*?<\/think>/, "").trim();
+  const normalText = text.replace(/<think>[\s\S]*?<\/think>/, "").trim();
   return {
     thinkText,
     normalLines: normalText.split("\n"),

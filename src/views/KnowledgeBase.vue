@@ -282,7 +282,7 @@ function pathJoin(base: string, name: string) {
 
 async function loadDir(filePath = "", keyword = "") {
   try {
-    const { data } = await axios.get("/api/file/list", { params: { filePath, keyword } });
+    const { data } = await axios.get("/file/list", { params: { filePath, keyword } });
     items.value = data?.data || []; // 直接取 data
     console.log("文件夹和文件列表", items.value);
   } catch (e) {
@@ -325,7 +325,7 @@ function openFolderModel() {
 async function createFolder() {
   console.log("新建文件夹:", createFolderName.value);
   try {
-    const response = await axios.post("/api/file/folder", {
+    const response = await axios.post("/file/folder", {
       folderName: createFolderName.value,
       dirPath: currentPath.value, // 当前路径下创建
     });
@@ -389,7 +389,7 @@ async function createFolderApi(folderName: string) {
   // 这里可以用 axios/fetch 调用实际接口
   if (folderName) {
     try {
-      await axios.post("/api/file/folder", {
+      await axios.post("/file/folder", {
         folderName: folderName,
         dirPath: currentPath.value, // 当前路径下创建
       });
@@ -414,7 +414,7 @@ async function confirmUpload() {
     form.append("rewrite", String(rewriteText.value));
 
     try {
-      const response = await axios.post("/api/vector/single-upload", form, {
+      const response = await axios.post("/vector/single-upload", form, {
         onUploadProgress: (event) => {
           if (event.total) {
             pf.progress = Math.round((event.loaded / event.total) * 100);
@@ -455,7 +455,7 @@ function cancelUpload() {
 
 async function download(item: KBItem) {
   try {
-    const response = await axios.get(`/api/file/download?id=${item.id}`, {
+    const response = await axios.get(`/file/download?id=${item.id}`, {
       responseType: "blob",
       onDownloadProgress: (e) => {
         if (e.lengthComputable) {
@@ -512,7 +512,7 @@ function cancelDelete() {
 async function doDelete() {
   if (!deleteTarget.value) return;
   try {
-    await axios.post("/api/file/delete", {
+    await axios.post("/file/delete", {
       id: deleteTarget.value.id,
       removeVector: deleteVector.value, // ✅ 根据勾选传参
     });
