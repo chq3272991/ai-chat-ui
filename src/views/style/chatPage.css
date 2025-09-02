@@ -1,19 +1,12 @@
 
 
 #app {
-  max-width: 1280px;
   margin: 0 auto;
   text-align: center;
 }
 
 /* container 全屏 flex 布局 */
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 95vh;      /* 占屏幕95，外侧导航栏占5 */
-  margin: 0;
-  padding: 0;         /* 去掉原来的 padding，避免总高度超出 */
-}
+
 
 /* header 高度自适应内容 */
 header {
@@ -305,4 +298,97 @@ header {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px;
+}
+
+/* 核心修改：页面容器高度继承父容器，不再强制100vh */
+.page-container {
+  display: flex;
+  width: 100%;
+  height: 100%; /* 改为100%，继承父容器高度 */
+  overflow: hidden; /* 防止内部溢出导致的全局滚动 */
+}
+
+/* 左侧功能区样式保持不变 */
+.sidebar {
+  width: 280px;
+  border-right: 1px solid #eee;
+  padding: 16px;
+  overflow-y: auto; /* 仅侧边栏内容溢出时滚动 */
+  background-color: #fff;
+  height: 100%; /* 填满父容器高度 */
+  box-sizing: border-box; /* 确保padding不增加总高度 */
+}
+
+/* 新建聊天按钮 */
+.new-chat-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #409eff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 20px;
+  transition: background-color 0.2s;
+}
+
+.new-chat-btn:hover {
+  background-color: #337ecc;
+}
+
+/* 历史聊天列表标题 */
+.history-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* 历史聊天列表项 */
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-item {
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 列表项 hover/选中状态 */
+.history-item:hover {
+  background-color: #f5f7fa;
+}
+
+.history-item.active {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+/* 右侧原内容区：占满剩余宽度 */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 95vh;
+  overflow: hidden;
+}
+
+/* 原容器样式调整：适配右侧内容区 */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  overflow: hidden;
 }
