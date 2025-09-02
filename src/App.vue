@@ -1,11 +1,18 @@
 <template>
   <div class="header-container">
     <!-- 极简 header -->
-    <header class="flex items-center px-2 py-1 border-b flex-shrink-0 bg-white header-p">
+    <header
+      v-if="showHeader"
+      class="flex items-center px-2 py-1 border-b flex-shrink-0 bg-white header-p"
+    >
       <nav class="flex gap-1">
         <router-link to="/" class="tab-btn">对话框</router-link>
         <router-link to="/kb" class="tab-btn">知识库</router-link>
       </nav>
+      <div v-if="isLoggedIn" class="ml-auto flex items-center gap-2">
+        <span>{{ username }}</span>
+        <el-button type="text" @click="logout">退出</el-button>
+      </div>
     </header>
 
     <!-- 路由内容区域，占满剩余空间 -->
@@ -16,7 +23,23 @@
 </template>
 
 <script setup lang="ts">
-// 顶层只做导航容器
+import { computed } from "vue"; // ✅ 需要加上
+import { useUserStore } from "@/stores/user";
+import { useRouter, useRoute } from "vue-router";
+const userStore = useUserStore();
+const router = useRouter(); // 用于跳转
+const route = useRoute(); // 获取当前路由信息，比如 path
+
+const isLoggedIn = computed(() => userStore.isLoggedIn);
+const username = computed(() => userStore.username);
+
+// 当在登录页或注册页时隐藏顶部导航
+const showHeader = computed(() => !["/login", "/register"].includes(route.path));
+
+function logout() {
+  userStore.logout();
+  router.push("/login");
+}
 </script>
 
 <style scoped>
