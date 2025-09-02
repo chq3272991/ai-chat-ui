@@ -1,5 +1,3 @@
-
-
 #app {
   margin: 0 auto;
   text-align: center;
@@ -113,16 +111,6 @@ header {
 }
 
 /* 按钮样式 */
-/* .input-area button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #333;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-} */
-
 .chat-stop-btn,
 .chat-send-btn {
   padding: 8px 16px;
@@ -207,7 +195,7 @@ header {
 .content-container h5,
 .content-container h6,
 .content-container p,
-.content-container ul，
+.content-container ul,
 .content-container ol {
   margin-top: 0.0em;   /* 或自己调整 */
   margin-bottom: 0.0em;
@@ -218,7 +206,7 @@ header {
   margin-block-end: 0.1em;
 }
 
-.content-container ul，
+.content-container ul,
 .content-container ol {
   padding-left: 1.2em; /* 列表缩进 */
 }
@@ -308,18 +296,29 @@ header {
   overflow: hidden; /* 防止内部溢出导致的全局滚动 */
 }
 
-/* 左侧功能区样式保持不变 */
+/* 1. 左侧功能区：调整内边距，为顶部折叠按钮预留空间 */
 .sidebar {
   width: 280px;
   border-right: 1px solid #eee;
-  padding: 16px;
-  overflow-y: auto; /* 仅侧边栏内容溢出时滚动 */
+  /* 关键修改：顶部内边距从16px改为36px，避开绝对定位的折叠按钮 */
+  padding: 36px 16px 16px; 
+  overflow-y: auto;
   background-color: #fff;
-  height: 100%; /* 填满父容器高度 */
-  box-sizing: border-box; /* 确保padding不增加总高度 */
+  height: 100%;
+  box-sizing: border-box;
+  transition: width 0.2s ease;
+  position: relative;
 }
 
-/* 新建聊天按钮 */
+/* 折叠状态：调整顶部内边距，保持按钮不溢出 */
+.sidebar.sidebar-collapsed {
+  width: 30px;
+  /* 关键修改：顶部内边距同步改为36px，与展开状态对齐 */
+  padding: 36px 4px 16px; 
+  overflow: hidden;
+}
+
+/* 3. 新建聊天按钮：保持原有样式，无需修改（因sidebar顶部已预留36px空间，不再与折叠按钮重叠） */
 .new-chat-btn {
   width: 100%;
   padding: 12px;
@@ -331,10 +330,31 @@ header {
   font-size: 14px;
   margin-bottom: 20px;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .new-chat-btn:hover {
   background-color: #337ecc;
+}
+
+/* 折叠状态：新建按钮只显示图标（关键新增） */
+.sidebar.sidebar-collapsed .new-chat-btn {
+  padding: 12px 0; /* 取消左右内边距，适应30px宽度 */
+  gap: 0; /* 折叠时无间距 */
+}
+
+/* 新建聊天按钮图标（关键新增） */
+.new-chat-icon {
+  font-size: 16px;
+  font-weight: bold; /* 图标加粗，更醒目 */
+}
+
+/* 折叠状态：隐藏新建按钮文字（关键新增） */
+.sidebar.sidebar-collapsed .new-chat-text {
+  display: none;
 }
 
 /* 历史聊天列表标题 */
@@ -345,7 +365,55 @@ header {
   font-weight: 500;
 }
 
-/* 历史聊天列表项 */
+/* 历史聊天标题 + 折叠按钮 容器（保留原有） */
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+/* 2. 折叠按钮：调整定位位置，确保在顶部预留空间内 */
+.collapse-btn {
+  position: absolute;
+  /* 关键修改：顶部距离从12px改为8px，配合sidebar顶部36px内边距 */
+  top: 8px;
+  /* 关键修改：右侧距离从12px改为16px，与sidebar展开状态的右侧内边距对齐 */
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+  z-index: 10;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 折叠状态：调整折叠按钮右侧距离，适配30px窄宽度 */
+.sidebar.sidebar-collapsed .collapse-btn {
+  /* 关键修改：右侧距离改为4px，与折叠状态的sidebar右侧内边距对齐 */
+  right: 4px;
+}
+
+.collapse-btn:hover {
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+/* 历史聊天内容容器（保留原有过渡） */
+.history-content {
+  transition: all 0.2s ease;
+}
+
+/* 历史聊天列表项（保留原有） */
 .history-list {
   list-style: none;
   padding: 0;
@@ -365,7 +433,6 @@ header {
   text-overflow: ellipsis;
 }
 
-/* 列表项 hover/选中状态 */
 .history-item:hover {
   background-color: #f5f7fa;
 }
@@ -375,16 +442,23 @@ header {
   color: #1890ff;
 }
 
-/* 右侧原内容区：占满剩余宽度 */
+/* 右侧原内容区：新增侧边栏宽度适配（关键修改） */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 95vh;
   overflow: hidden;
+  margin-left: 280px; /* 与展开时的sidebar宽度一致 */
+  transition: margin-left 0.2s ease; /* 随sidebar宽度平滑过渡 */
 }
 
-/* 原容器样式调整：适配右侧内容区 */
+/* 折叠状态：主内容区左边距同步缩小到30px（关键新增） */
+.sidebar.sidebar-collapsed + .main-content {
+  margin-left: 30px;
+}
+
+/* 原容器样式调整：适配右侧内容区（保留原有） */
 .container {
   display: flex;
   flex-direction: column;

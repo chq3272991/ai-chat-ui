@@ -6,33 +6,42 @@
 <template>
   <!-- 新增：页面总容器（左侧sidebar + 右侧main-content） -->
   <div class="page-container">
-    <!-- 左侧：新建聊天 + 历史聊天列表 -->
-    <div class="sidebar">
-      <!-- 1. 新建聊天按钮 -->
-      <button class="new-chat-btn" @click="handleNewChat">新建聊天</button>
+    <!-- 左侧 sidebar：新增动态类控制宽度，移除原v-show（避免折叠时整个消失） -->
+    <div class="sidebar" :class="{ 'sidebar-collapsed': isHistoryCollapsed }">
+      <!-- 折叠按钮：固定在右上角，始终显示 -->
+      <button class="collapse-btn" @click="toggleHistoryCollapse">
+        {{ isHistoryCollapsed ? "▶" : "◀" }}
+      </button>
 
-      <!-- 2. 历史聊天列表 -->
-      <div class="history-section">
-        <h3 class="history-title">历史聊天</h3>
-        <!-- 加载中状态 -->
-        <div v-if="historyLoading" class="history-loading">加载历史聊天中...</div>
-        <!-- 无历史数据状态 -->
-        <div v-else-if="historyList.length === 0" class="history-empty">
-          暂无历史聊天记录
+      <!-- 新建聊天按钮：折叠时只显示图标（+），展开时显示文字 -->
+      <button class="new-chat-btn" @click="handleNewChat">
+        <span class="new-chat-icon">+</span>
+        <span class="new-chat-text" v-show="!isHistoryCollapsed">新建聊天</span>
+      </button>
+
+      <!-- 历史聊天列表：折叠时隐藏整个区域 -->
+      <div class="history-section" v-show="!isHistoryCollapsed">
+        <div class="history-header">
+          <h3 class="history-title">历史聊天</h3>
         </div>
-        <!-- 历史列表 -->
-        <ul class="history-list" v-else>
-          <li
-            class="history-item"
-            :class="{ active: currentHistoryId === item.id }"
-            @click="handleSelectHistory(item)"
-            v-for="item in historyList"
-            :key="item.id"
-          >
-            <!-- 显示聊天标题（取第一条消息内容或默认标题） -->
-            {{ item.title || "未命名聊天" }}
-          </li>
-        </ul>
+        <!-- 历史内容：展开时显示，折叠时随section隐藏 -->
+        <div class="history-content">
+          <div v-if="historyLoading" class="history-loading">加载历史聊天中...</div>
+          <div v-else-if="historyList.length === 0" class="history-empty">
+            暂无历史聊天记录
+          </div>
+          <ul class="history-list" v-else>
+            <li
+              class="history-item"
+              :class="{ active: currentHistoryId === item.id }"
+              @click="handleSelectHistory(item)"
+              v-for="item in historyList"
+              :key="item.id"
+            >
+              {{ item.title || "未命名聊天" }}
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -203,6 +212,12 @@ const historyLoading = ref(false); // 历史列表加载状态
 const currentHistoryId = ref<string | null>(null); // 当前选中的历史聊天ID
 
 // ---------------------- 新增：历史聊天功能逻辑 ----------------------
+
+// 新增：历史聊天折叠状态与切换方法
+const isHistoryCollapsed = ref(false);
+const toggleHistoryCollapse = () => {
+  isHistoryCollapsed.value = !isHistoryCollapsed.value;
+};
 /**
  * 页面挂载时请求历史聊天接口
  */
@@ -240,6 +255,7 @@ async function fetchChatHistory() {
 function handleNewChat() {
   // 1. 清空store中的消息列表
   store.clear();
+
   // 2. 重置输入框、文件预览、选中文件
   input.value = "";
   previewNames.value = [];
@@ -247,11 +263,18 @@ function handleNewChat() {
   others.value = [];
   selectedFiles.value = [];
   if (fileInput.value) fileInput.value.value = "";
+
   // 3. 重置模型为默认值
   model.value = DEFAULT_MODEL;
   store.model = DEFAULT_MODEL;
+
   // 4. 取消历史聊天选中状态
   currentHistoryId.value = null;
+
+  // 5. 重置思考相关状态
+  for (const key in thinkOpen) delete thinkOpen[key];
+  for (const key in thinkLoading) delete thinkLoading[key];
+  for (const key in thinkTime) delete thinkTime[key];
 }
 
 /**
