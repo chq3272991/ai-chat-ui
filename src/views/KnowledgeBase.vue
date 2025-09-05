@@ -363,13 +363,9 @@ function onUpload(e: Event) {
   // 判断是否选择了文件夹（通过 webkitRelativePath 判断）
   const firstFile = input.files[0] as any;
   let topFolder = "";
-  if (firstFile.webkitRelativePath) {
-    // webkitRelativePath 示例: "MyFolder/sub1/file.txt"
-    topFolder = firstFile.webkitRelativePath.split("/")[0];
-    console.log("选择的顶层文件夹：", topFolder);
-    // 调用创建文件夹的接口 /file/folder
-    createFolderApi(topFolder);
-  }
+  // webkitRelativePath 示例: "MyFolder/sub1/file.txt"
+  topFolder = firstFile.webkitRelativePath.split("/")[0];
+  console.log("选择的顶层文件夹：", topFolder);
 
   pendingFiles.value = Array.from(input.files).map((f) => ({
     file: f,
@@ -409,6 +405,7 @@ async function confirmUpload() {
 
     const form = new FormData();
     form.append("file", pf.file);
+    form.append("lastModified", String(pf.file.lastModified)); // 时间戳
     form.append("path", currentPath.value);
     form.append("optimize", String(optimizeText.value));
     form.append("rewrite", String(rewriteText.value));
