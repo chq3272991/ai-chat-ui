@@ -325,9 +325,14 @@ function openFolderModel() {
 async function createFolder() {
   console.log("新建文件夹:", createFolderName.value);
   try {
+    let dirPath = "";
+    if (currentPath.value) {
+      dirPath = currentPath.value + "/" + createFolderName.value;
+    } else {
+      dirPath = createFolderName.value;
+    }
     const response = await axios.post("/file/folder", {
-      folderName: createFolderName.value,
-      dirPath: currentPath.value, // 当前路径下创建
+      dirPath: dirPath, // 当前路径下创建
     });
     // 解析响应数据
     const result = response.data;

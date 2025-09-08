@@ -82,7 +82,7 @@ header {
 .bubble[name="user"] {
   background-color: #e0f7fa;
   margin-left: auto;   /* 右对齐 */
-  max-width: 30%;
+  max-width: 60%;
 }
 
 /* footer 输入区固定底部 */
@@ -449,7 +449,7 @@ header {
   flex-direction: column;
   height: 95vh;
   overflow: hidden;
-  margin-left: 280px; /* 与展开时的sidebar宽度一致 */
+  margin-left: 10px; /* 与展开时的sidebar宽度一致 */
   transition: margin-left 0.2s ease; /* 随sidebar宽度平滑过渡 */
 }
 
