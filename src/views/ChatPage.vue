@@ -157,18 +157,12 @@
               <div class="kb-actions">
                 <button
                   type="button"
-                  v-if="store.sending"
-                  @click="handleStop"
-                  class="chat-stop-btn"
+                  :disabled="!input.trim() && !store.sending"
+                  @click="store.sending ? handleStop() : onSubmit()"
+                  :class="store.sending ? 'chat-stop-btn' : 'chat-send-btn'"
                 >
-                  停止
-                </button>
-                <button
-                  type="submit"
-                  :disabled="store.sending || !input.trim()"
-                  class="chat-send-btn"
-                >
-                  发送
+                  <template v-if="store.sending"> ⏹ 停止 </template>
+                  <template v-else> 📤 发送 </template>
                 </button>
               </div>
             </div>

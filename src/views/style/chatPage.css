@@ -466,3 +466,17 @@ header {
   padding: 16px;
   overflow: hidden;
 }
+
+.chat-send-btn {
+  background-color: #409eff;
+  color: white;
+  border-radius: 6px;
+  padding: 6px 14px;
+}
+
+.chat-stop-btn {
+  background-color: #f56c6c;
+  color: white;
+  border-radius: 6px;
+  padding: 6px 14px;
+}

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { ChatMessage, ChatRequestBody, ChatOptions } from '@/types'
-import { streamChat } from '@/lib/api'
+import { streamChat, resetConversationId } from '@/lib/api'
 
 const DEFAULT_MODEL = "deepseek-r1:8b"
 
@@ -21,42 +21,37 @@ export const useChatStore = defineStore('chat', {
             this.messages.push({ role: 'assistant', content: '' })
         },
         updateLastAssistantContent(delta: string) {
-            let piece = "";  // ← 这里声明
+            let piece = ""
 
             try {
-                // 去掉 SSE 前缀
-                let jsonStr = delta.trim();
+                let jsonStr = delta.trim()
                 if (jsonStr.startsWith("data:")) {
-                    jsonStr = jsonStr.substring(5).trim();
+                    jsonStr = jsonStr.substring(5).trim()
                 }
-
-                // 解析 JSON
-                const obj = JSON.parse(jsonStr);
+                const obj = JSON.parse(jsonStr)
                 piece =
                     obj?.result?.output?.text ||
                     obj?.results?.[0]?.output?.text ||
-                    "";
+                    ""
             } catch {
-                // 如果不是合法 JSON，就直接当作普通字符串
-                piece = delta;
+                piece = delta
             }
 
-            // 把片段拼接到最后一个 assistant 消息
             for (let i = this.messages.length - 1; i >= 0; i--) {
                 if (this.messages[i].role === "assistant") {
-                    this.messages[i].content += piece;
-                    break;
+                    this.messages[i].content += piece
+                    break
                 }
             }
         },
-        // ⬇️ 新增 hooks 参数
         async send(hooks?: {
             onAssistantStart?: (aiIndex: number) => void
             onAssistantDone?: (aiIndex: number) => void
             onError?: (e: any) => void
-            onStopped?: () => void   // ✅ 新增钩子
+            onStopped?: () => void
         }) {
             if (this.sending) return
+
             this.error = ''
             this.sending = true
             this.controller = new AbortController()
@@ -70,43 +65,49 @@ export const useChatStore = defineStore('chat', {
 
             this.appendAssistantMessagePlaceholder()
             const aiIndex = this.messages.length - 1
-            hooks?.onAssistantStart?.(aiIndex)   // ⬅️ 告知外层：助手消息开始了
+            hooks?.onAssistantStart?.(aiIndex)
 
-            await streamChat(body, {
-                signal: this.controller.signal,
-                onToken: (chunk) => this.updateLastAssistantContent(chunk),
-                onDone: () => {
-                    this.sending = false
-                    this.controller = null
-                    hooks?.onAssistantDone?.(aiIndex) // ⬅️ 告知外层：助手消息结束
-                },
-                onError: (e) => {
-                    this.sending = false
-                    this.controller = null
-
-                    // 🚀 关键：忽略用户主动停止导致的异常
-                    if (e?.name === 'AbortError' || String(e).includes('aborted')) {
-                        // 不写入 this.error，保持静默
-                        return
-                    }
-
-                    // 其他才是真正错误
+            try {
+                await streamChat(body, {
+                    signal: this.controller.signal,
+                    onToken: (chunk) => this.updateLastAssistantContent(chunk),
+                    onDone: () => {
+                        hooks?.onAssistantDone?.(aiIndex)
+                    },
+                    onError: (e) => {
+                        // 用户主动中断，不当作错误
+                        if (e?.name === 'AbortError' || String(e).includes('aborted')) {
+                            return
+                        }
+                        this.error = e?.message || String(e)
+                        hooks?.onError?.(e)
+                    },
+                })
+            } catch (e: any) {
+                // 兜底异常处理
+                if (e?.name !== 'AbortError' && !String(e).includes('aborted')) {
                     this.error = e?.message || String(e)
                     hooks?.onError?.(e)
-                },
-            })
+                }
+            } finally {
+                // ✅ 无论成功/失败/中断，最后都复原状态
+                this.sending = false
+                this.controller = null
+            }
         },
         stop(hooks?: { onStopped?: () => void }) {
             if (this.controller) {
                 this.controller.abort()
-                this.sending = false
-                this.controller = null
-                hooks?.onStopped?.()   // ✅ 主动触发 onStopped
             }
+            // ✅ 双保险：立即复原状态
+            this.sending = false
+            this.controller = null
+            hooks?.onStopped?.()
         },
         clear() {
             this.messages = []
             this.error = ''
+            resetConversationId()
         }
     }
 })
