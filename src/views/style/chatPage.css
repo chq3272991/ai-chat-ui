@@ -110,19 +110,29 @@ header {
   margin-bottom: 8px;
 }
 
-/* 按钮样式 */
-.chat-stop-btn,
+/* 正常状态 */
 .chat-send-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #333;
-  color: #fff;
+  background-color: #409eff;
+  color: white;
+  border-radius: 6px;
+  border-color: white;
+  padding: 6px 14px;
   cursor: pointer;
-  font-size: 14px;
+  opacity: 1;
 }
 
-.chat-stop-btn,
+/* 停止按钮 */
+.chat-stop-btn {
+  background-color: #f56c6c;
+  color: white;
+  border-radius: 6px;
+  border-color: white;
+  padding: 6px 14px;
+  cursor: pointer; /* 保证可点击 */
+  opacity: 1;       /* 保证不灰掉 */
+}
+
+/* 仅针对禁用状态 */
 .chat-send-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -467,7 +477,7 @@ header {
   overflow: hidden;
 }
 
-.chat-send-btn {
+/* .chat-send-btn {
   background-color: #409eff;
   color: white;
   border-radius: 6px;
@@ -479,4 +489,19 @@ header {
   color: white;
   border-radius: 6px;
   padding: 6px 14px;
+} */
+
+.query-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.query-options .el-check-tag {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px;
+  font-size: 14px;
 }

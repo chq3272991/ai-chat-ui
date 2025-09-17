@@ -26,4 +26,6 @@ export interface ChatRequestBody {
     options?: ChatOptions
     stream?: boolean
     conversationId: string
+    internet: boolean
+    local: boolean
 }

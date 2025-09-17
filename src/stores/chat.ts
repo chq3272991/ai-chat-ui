@@ -7,19 +7,26 @@ const DEFAULT_MODEL = "deepseek-r1:8b"
 export const useChatStore = defineStore('chat', {
     state: () => ({
         model: DEFAULT_MODEL,
-        options: { temperature: 0.7, top_p: 0.9, max_tokens: 200 } as ChatOptions,
+        options: { temperature: 0.7, top_p: 0.9, max_tokens: 20000 } as ChatOptions,
+        conversationId: '' as string,
         messages: [] as ChatMessage[],
         sending: false,
         controller: null as AbortController | null,
         error: '' as string,
     }),
     actions: {
-        appendUserMessage(content: string, images: string[] = [], files: { name: string; type: string; dataUrl: string; }[] = []) {
+        appendUserMessage(
+            content: string,
+            images: string[] = [],
+            files: { name: string; type: string; dataUrl: string }[] = []
+        ) {
             this.messages.push({ role: 'user', content, images, files })
         },
+
         appendAssistantMessagePlaceholder() {
             this.messages.push({ role: 'assistant', content: '' })
         },
+
         updateLastAssistantContent(delta: string) {
             let piece = ""
 
@@ -44,7 +51,12 @@ export const useChatStore = defineStore('chat', {
                 }
             }
         },
+
         async send(hooks?: {
+            opts?: {
+                internet?: boolean
+                local?: boolean
+            },
             onAssistantStart?: (aiIndex: number) => void
             onAssistantDone?: (aiIndex: number) => void
             onError?: (e: any) => void
@@ -56,23 +68,29 @@ export const useChatStore = defineStore('chat', {
             this.sending = true
             this.controller = new AbortController()
 
+            // ✅ 从 hooks 解构出 opts 和回调
+            const { opts, onAssistantStart, onAssistantDone, onError, onStopped } = hooks ?? {}
+
             const body: ChatRequestBody = {
                 model: this.model,
+                conversationId: this.conversationId || '',
                 messages: this.messages,
                 options: this.options,
                 stream: true,
+                internet: opts?.internet ?? false,
+                local: opts?.local ?? true
             }
 
             this.appendAssistantMessagePlaceholder()
             const aiIndex = this.messages.length - 1
-            hooks?.onAssistantStart?.(aiIndex)
+            onAssistantStart?.(aiIndex)
 
             try {
                 await streamChat(body, {
                     signal: this.controller.signal,
                     onToken: (chunk) => this.updateLastAssistantContent(chunk),
                     onDone: () => {
-                        hooks?.onAssistantDone?.(aiIndex)
+                        onAssistantDone?.(aiIndex)
                     },
                     onError: (e) => {
                         // 用户主动中断，不当作错误
@@ -80,14 +98,14 @@ export const useChatStore = defineStore('chat', {
                             return
                         }
                         this.error = e?.message || String(e)
-                        hooks?.onError?.(e)
+                        onError?.(e)
                     },
                 })
             } catch (e: any) {
                 // 兜底异常处理
                 if (e?.name !== 'AbortError' && !String(e).includes('aborted')) {
                     this.error = e?.message || String(e)
-                    hooks?.onError?.(e)
+                    onError?.(e)
                 }
             } finally {
                 // ✅ 无论成功/失败/中断，最后都复原状态
@@ -95,6 +113,7 @@ export const useChatStore = defineStore('chat', {
                 this.controller = null
             }
         },
+
         stop(hooks?: { onStopped?: () => void }) {
             if (this.controller) {
                 this.controller.abort()
@@ -104,6 +123,7 @@ export const useChatStore = defineStore('chat', {
             this.controller = null
             hooks?.onStopped?.()
         },
+
         clear() {
             this.messages = []
             this.error = ''

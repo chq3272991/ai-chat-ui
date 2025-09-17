@@ -142,6 +142,28 @@
               "
             >
               <div class="upload-wrapper">
+                <div class="query-options">
+                  <el-check-tag
+                    :checked="internet"
+                    @change="internet = !internet"
+                    type="success"
+                  >
+                    <el-icon><Connection /></el-icon>
+                    <span style="margin-left: 4px">联网思考</span>
+                  </el-check-tag>
+
+                  <el-check-tag
+                    :checked="local"
+                    @change="local = !local"
+                    type="primary"
+                    style="margin-left: 8px"
+                  >
+                    <el-icon><Collection /></el-icon>
+                    <span style="margin-left: 4px">私库查询</span>
+                  </el-check-tag>
+                </div>
+              </div>
+              <div class="kb-actions">
                 <!-- 上传按钮 -->
                 <label class="upload-label">
                   <Upload class="icon" />
@@ -153,11 +175,9 @@
                     class="file-input"
                   />
                 </label>
-              </div>
-              <div class="kb-actions">
                 <button
                   type="button"
-                  :disabled="!input.trim() && !store.sending"
+                  :disabled="!store.sending && !input.trim()"
                   @click="store.sending ? handleStop() : onSubmit()"
                   :class="store.sending ? 'chat-stop-btn' : 'chat-send-btn'"
                 >
@@ -182,6 +202,7 @@ import { ElButton } from "element-plus";
 import { Upload } from "lucide-vue-next";
 // 新增：引入axios用于接口请求（若项目已全局引入可省略）
 import axios from "axios";
+import { Connection, Collection } from "@element-plus/icons-vue";
 
 const store = useChatStore();
 const thinkOpen = reactive<Record<number, boolean>>({});
@@ -212,6 +233,11 @@ const isHistoryCollapsed = ref(false);
 const toggleHistoryCollapse = () => {
   isHistoryCollapsed.value = !isHistoryCollapsed.value;
 };
+
+// 勾选状态：联网查询、私库查询
+const internet = ref(false);
+const local = ref(false);
+
 /**
  * 页面挂载时请求历史聊天接口
  */
@@ -454,6 +480,10 @@ async function onSubmit() {
   const start = Date.now();
 
   await store.send({
+    opts: {
+      internet: internet.value,
+      local: local.value,
+    },
     onAssistantStart: (aiIndex) => {
       thinkOpen[aiIndex] = false;
       thinkLoading[aiIndex] = true;
