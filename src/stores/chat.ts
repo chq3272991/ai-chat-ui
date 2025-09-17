@@ -128,6 +128,22 @@ export const useChatStore = defineStore('chat', {
             this.messages = []
             this.error = ''
             resetConversationId()
+        },
+
+        appendMessage(
+            role: "user" | "assistant",
+            content: string,
+            images: string[] = [],
+            files: { name: string; type: string; dataUrl: string }[] = []
+        ) {
+            if (role === "user") {
+                this.appendUserMessage(content, images, files);
+            } else if (role === "assistant") {
+                // 插入占位消息
+                this.appendAssistantMessagePlaceholder();
+                const aiIndex = this.messages.length - 1;
+                this.updateLastAssistantContent(content);
+            }
         }
     }
 })

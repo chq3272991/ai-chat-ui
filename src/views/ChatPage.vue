@@ -251,19 +251,28 @@ onMounted(() => {
 async function fetchChatHistory() {
   historyLoading.value = true;
   try {
-    const response = await axios.get("/chat/history");
-    // 假设接口返回格式：{ code: 200, data: [{ id: "xxx", title: "聊天标题", createTime: "xxx" }] }
-    if (response.data.code === 200) {
-      historyList.value = response.data.data;
-      // 若有历史数据，默认选中第一条（可选逻辑）
+    // --------- 本地模拟数据 start ---------
+    // 模拟接口返回格式：{ code: 200, data: [...] }
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 模拟网络延迟
+    const response = {
+      code: 200,
+      data: [
+        { id: "1", title: "第一次聊天", createTime: "2025-09-17 10:00:00" },
+        { id: "2", title: "Vue开发调试", createTime: "2025-09-17 11:00:00" },
+        { id: "3", title: "前端样式优化", createTime: "2025-09-17 12:30:00" },
+      ],
+    };
+    // --------- 本地模拟数据 end ---------
+
+    if (response.code === 200) {
+      historyList.value = response.data;
+      // 默认选中第一条
       if (historyList.value.length > 0) {
         currentHistoryId.value = historyList.value[0].id;
       }
-    } else {
-      console.error("获取历史聊天失败：", response.data.msg);
     }
   } catch (error) {
-    console.error("历史聊天接口请求异常：", error);
+    console.error("模拟获取历史聊天异常：", error);
   } finally {
     historyLoading.value = false;
   }
@@ -297,30 +306,55 @@ function handleNewChat() {
   for (const key in thinkTime) delete thinkTime[key];
 }
 
-/**
- * 选中历史聊天：加载对应聊天记录（需配合后端接口，此处为示例逻辑）
- */
 async function handleSelectHistory(historyItem: any) {
   currentHistoryId.value = historyItem.id;
   historyLoading.value = true;
+
   try {
-    // 假设请求单个历史聊天详情接口（需后端提供）
-    const response = await axios.get(`/chat/history/${historyItem.id}`);
-    if (response.data.code === 200) {
-      const chatRecords = response.data.data.messages; // 历史消息列表
-      // 清空当前消息并加载历史消息
-      store.clear();
-      chatRecords.forEach((msg: any) => {
-        store.appendMessage(msg.role, msg.content, msg.images || [], msg.files || []);
-      });
-      // 同步模型
-      model.value = response.data.data.model || DEFAULT_MODEL;
-      store.model = model.value;
-    } else {
-      console.error("加载历史聊天详情失败：", response.data.msg);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // 模拟延迟
+
+    // 本地模拟不同历史聊天对应的消息
+    let chatRecords: any[] = [];
+    if (historyItem.id === "1") {
+      chatRecords = [
+        { role: "user", content: "你好" },
+        { role: "assistant", content: "你好！有什么可以帮你的吗？" },
+      ];
+    } else if (historyItem.id === "2") {
+      chatRecords = [
+        { role: "user", content: "如何在 Vue 中实现组件通信？" },
+        { role: "assistant", content: "可以使用 props、emits 或者 provide/inject。" },
+        {
+          role: "user",
+          content: "分析不同方案优缺点\n考虑性能与维护性你推荐哪种方式？",
+        },
+        {
+          role: "assistant",
+          content:
+            "<think>思考了一下内容易撒啊的</think>根据场景，如果父子组件通信使用 props/emits，跨层级使用 provide/inject。",
+        },
+      ];
+    } else if (historyItem.id === "3") {
+      chatRecords = [
+        { role: "user", content: "页面样式太丑了" },
+        { role: "assistant", content: "可以使用 flex 布局和统一的主题色来优化。" },
+      ];
     }
-  } catch (error) {
-    console.error("历史聊天详情接口请求异常：", error);
+
+    // 清空当前消息并加载模拟历史消息
+    store.clear();
+    chatRecords.forEach((msg) => {
+      store.appendMessage(msg.role, msg.content, msg.images || [], msg.files || []);
+    });
+
+    // 同步模型（可选）
+    model.value = historyItem.model || DEFAULT_MODEL;
+    store.model = model.value;
+
+    // 重置思考状态
+    for (const key in thinkOpen) delete thinkOpen[key];
+    for (const key in thinkLoading) delete thinkLoading[key];
+    for (const key in thinkTime) delete thinkTime[key];
   } finally {
     historyLoading.value = false;
   }
