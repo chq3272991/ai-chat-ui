@@ -1,3 +1,11 @@
+/* 全局 ul 样式重置：清除默认内边距和列表符号 */
+ul {
+  padding-inline-start: 0; /* 清除默认左侧内边距 */
+  padding-left: 0; /* 兼容旧浏览器 */
+  margin: 0; /* 清除默认外边距 */
+  list-style: none; /* 清除默认列表符号（圆点/数字） */
+}
+
 /* 按钮组 */
 .kb-actions {
   display: flex;

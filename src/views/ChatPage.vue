@@ -42,7 +42,22 @@
               v-for="item in historyList"
               :key="item.id"
             >
-              {{ item.title || "未命名聊天" }}
+              <span class="history-title-text">{{ item.title || "未命名聊天" }}</span>
+
+              <el-popover
+                trigger="click"
+                placement="top-end"
+                popper-class="history-more-popover"
+              >
+                <div class="more-menu-item" @click.stop="handleRename(item)">重命名</div>
+                <div class="more-menu-item" @click.stop="handleDelete(item)">删除</div>
+                <div class="more-menu-item" @click.stop="handleArchive(item)">归档</div>
+                <div class="more-menu-item" @click.stop="handleShare(item)">共享</div>
+
+                <template #reference>
+                  <button class="more-btn" @click.stop>⋮</button>
+                </template>
+              </el-popover>
             </li>
           </ul>
           <div v-if="historyLoading && historyList.length > 0" class="history-loading">
@@ -253,6 +268,7 @@ const historyMessagePage = ref(1);
 const historyMessagePageSize = ref(40);
 const historyMessageTotalPages = ref(1);
 const loadingHistoryMessages = ref(false);
+const moreMenuOpenId = ref<string | null>(null);
 
 /**
  * 获取历史聊天列表（分页）
@@ -606,4 +622,38 @@ async function onSubmit() {
     },
   });
 }
+
+function toggleMoreMenu(itemId: string) {
+  if (moreMenuOpenId.value === itemId) {
+    moreMenuOpenId.value = null;
+  } else {
+    moreMenuOpenId.value = itemId;
+  }
+}
+
+// 点击操作
+function handleRename(item: any) {
+  console.log("重命名", item);
+  moreMenuOpenId.value = null;
+}
+
+function handleDelete(item: any) {
+  console.log("删除", item);
+  moreMenuOpenId.value = null;
+}
+
+function handleArchive(item: any) {
+  console.log("归档", item);
+  moreMenuOpenId.value = null;
+}
+
+function handleShare(item: any) {
+  console.log("共享", item);
+  moreMenuOpenId.value = null;
+}
+
+// 点击页面空白关闭菜单
+document.addEventListener("click", () => {
+  moreMenuOpenId.value = null;
+});
 </script>
