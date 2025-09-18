@@ -250,7 +250,7 @@ const messagesContainer = ref<HTMLElement | null>(null);
 
 const historyMessages = ref<any[]>([]);
 const historyMessagePage = ref(1);
-const historyMessagePageSize = ref(2);
+const historyMessagePageSize = ref(40);
 const historyMessageTotalPages = ref(1);
 const loadingHistoryMessages = ref(false);
 
@@ -378,11 +378,6 @@ function handleNewChat() {
   currentHistoryId.value = "";
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
-
-  // 5. 重置思考相关状态
-  for (const key in thinkOpen) delete thinkOpen[key];
-  for (const key in thinkLoading) delete thinkLoading[key];
-  for (const key in thinkTime) delete thinkTime[key];
 
   // 4️⃣ 在左侧列表插入“最新对话”
   const newChat = {

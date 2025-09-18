@@ -365,8 +365,8 @@ header {
 /* 悬浮效果 */
 .new-chat-btn:hover {
   background-color: #f5f7fa; /* 浅灰背景 */
-  border-color: #d0e0f0; /* 边框变色 */
-  color: #1890ff; /* 文字变色 */
+  border-color: #d0d0d0;     /* 边框灰色 */
+  color: #111;               /* 悬浮文字深黑 */
 }
 
 /* 书写图标样式 */
@@ -397,8 +397,10 @@ header {
   color: #666;
 }
 
-.sidebar.sidebar-collapsed .new-chat-btn:hover .new-chat-icon {
-  color: #1890ff;
+.sidebar.sidebar-collapsed .new-chat-btn:hover {
+  background-color: #f5f7fa;
+  border-color: #d0d0d0;
+  color: #111;
 }
 
 /* 2. 历史区容器：占据 sidebar 剩余空间（关键） */
@@ -508,20 +510,23 @@ header {
   margin-bottom: 6px;
   cursor: pointer;
   font-size: 13px;
-  color: #333;
+  color: #111; /* 默认文字深黑 */
   transition: background-color 0.2s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 悬浮高亮 */
 .history-item:hover {
-  background-color: #f5f7fa;
+  background-color: #f5f7fa; /* 浅灰背景 */
+  color: #111;               /* 文字深黑 */
 }
 
+/* 选中状态 */
 .history-item.active {
-  background-color: #e6f7ff;
-  color: #1890ff;
+  background-color: #e0e0e0; /* 灰色条 */
+  color: #111;               /* 文字深黑 */
 }
 
 /* 右侧原内容区：新增侧边栏宽度适配（关键修改） */
