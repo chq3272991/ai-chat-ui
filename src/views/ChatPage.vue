@@ -38,7 +38,7 @@
             <li
               class="history-item"
               :class="{ active: currentHistoryId === item.id }"
-              @click="handleSelectHistory(item)"
+              @click="handleSelectHistory(item.id)"
               v-for="item in historyList"
               :key="item.id"
             >
@@ -71,7 +71,11 @@
         </header>
 
         <!-- 消息展示区 -->
-        <main class="messages">
+        <main
+          class="messages"
+          ref="messagesContainer"
+          @scroll.passive="handleHistoryScroll"
+        >
           <div v-for="(m, i) in store.messages" :key="i" class="message">
             <div class="bubble" :name="m.role">
               <!-- think 折叠区域 -->
@@ -206,13 +210,14 @@
 
 <script setup lang="ts">
 import MarkdownIt from "markdown-it";
-import { ref, watch, reactive, watchEffect, onMounted } from "vue";
+import { ref, watch, reactive, watchEffect, onMounted, nextTick } from "vue";
 import { useChatStore } from "@/stores/chat";
 import { ElButton } from "element-plus";
 import { Upload } from "lucide-vue-next";
 // 新增：引入axios用于接口请求（若项目已全局引入可省略）
 import axios from "axios";
 import { Connection, Collection } from "@element-plus/icons-vue";
+import type { ChatMessage, ChatRequestBody, ChatOptions } from "@/types";
 
 const store = useChatStore();
 const thinkOpen = reactive<Record<number, boolean>>({});
@@ -234,12 +239,19 @@ const fileInput = ref<HTMLInputElement | null>(null);
 // 新增：历史聊天相关状态
 const historyList = ref<any[]>([]); // 历史聊天列表数据
 const historyLoading = ref(false); // 历史列表加载状态
-const currentHistoryId = ref<string | null>(null); // 当前选中的历史聊天ID
+const currentHistoryId = ref<string | "">(""); // 当前选中的历史聊天ID
 
 // 分页状态
 const pageNum = ref(1);
 const pageSize = 20;
 const hasMore = ref(true);
+const messagesContainer = ref<HTMLElement | null>(null);
+
+const historyMessages = ref<any[]>([]);
+const historyMessagePage = ref(1);
+const historyMessagePageSize = ref(2);
+const historyMessageTotalPages = ref(1);
+const loadingHistoryMessages = ref(false);
 
 /**
  * 获取历史聊天列表（分页）
@@ -249,38 +261,54 @@ async function fetchChatHistory(reset = false) {
   historyLoading.value = true;
 
   try {
-    // 模拟接口延迟
-    await new Promise((r) => setTimeout(r, 500));
+    const response = await axios.post("/conversation/getPage", {
+      current: pageNum.value, // 当前页
+      size: pageSize, // 每页条数
+    });
 
-    // 模拟数据
-    const total = 100; // 总共 45 条
-    const startIdx = (pageNum.value - 1) * pageSize;
-    const endIdx = Math.min(startIdx + pageSize, total);
-    const data: any[] = [];
+    const result = response.data;
+    if (result.success) {
+      const records = result.data.records || [];
+      const total = result.data.total || 0;
+      const current = result.data.current || 1;
+      const pages = result.data.pages || 1;
 
-    for (let i = startIdx; i < endIdx; i++) {
-      data.push({
-        id: String(i + 1),
-        title: `聊天记录 ${i + 1}`,
-        createTime: "2025-09-18 10:00:00",
-      });
+      // 使用真实数据更新列表
+      if (reset) {
+        historyList.value = records;
+        pageNum.value = 2; // 下一页
+      } else {
+        historyList.value = [...historyList.value, ...records];
+        pageNum.value = current + 1;
+      }
+
+      // 更新分页状态
+      hasMore.value = current < pages;
+
+      // ✅ 如果是第一页，并且返回了数据，默认选中第一条
+      if (reset && records.length > 0) {
+        currentHistoryId.value = records[0].id;
+        fetchHistoryMessages(records[0].id, 1);
+      }
     }
-
-    if (reset) {
-      historyList.value = data;
-    } else {
-      historyList.value = [...historyList.value, ...data];
-    }
-
-    // 更新分页状态
-    if (endIdx >= total) {
-      hasMore.value = false;
-    } else {
-      pageNum.value++;
-    }
+  } catch (error) {
+    console.error("获取聊天历史失败:", error);
   } finally {
     historyLoading.value = false;
   }
+}
+
+function handleSelectHistory(historyId: string) {
+  if (!historyId) return;
+
+  // 清空消息，但不清空 currentHistoryId
+  store.clear();
+  currentHistoryId.value = historyId; // ✅ 更新为新会话的 id
+  historyMessagePage.value = 1;
+  historyMessageTotalPages.value = 1;
+
+  // 拉第一页
+  fetchHistoryMessages(historyId, 1);
 }
 
 /**
@@ -290,6 +318,17 @@ function handleScroll(e: Event) {
   const el = e.target as HTMLElement;
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
     fetchChatHistory();
+  }
+}
+
+function handleHistoryScroll(e: Event) {
+  const el = e.target as HTMLElement;
+  // 滑到顶部触发加载上一页
+  if (el.scrollTop <= 10) {
+    const nextPage = historyMessagePage.value + 1;
+    if (nextPage < historyMessageTotalPages.value) {
+      fetchHistoryMessages(currentHistoryId.value, nextPage);
+    }
   }
 }
 
@@ -312,43 +351,13 @@ onMounted(() => {
   fetchChatHistory(true);
 });
 
-// /**
-//  * 请求历史聊天列表接口 /chat/history
-//  */
-// async function fetchChatHistory() {
-//   historyLoading.value = true;
-//   try {
-//     // --------- 本地模拟数据 start ---------
-//     // 模拟接口返回格式：{ code: 200, data: [...] }
-//     await new Promise((resolve) => setTimeout(resolve, 500)); // 模拟网络延迟
-//     const response = {
-//       code: 200,
-//       data: [
-//         { id: "1", title: "第一次聊天", createTime: "2025-09-17 10:00:00" },
-//         { id: "2", title: "Vue开发调试", createTime: "2025-09-17 11:00:00" },
-//         { id: "3", title: "前端样式优化", createTime: "2025-09-17 12:30:00" },
-//       ],
-//     };
-//     // --------- 本地模拟数据 end ---------
-
-//     if (response.code === 200) {
-//       historyList.value = response.data;
-//       // 默认选中第一条
-//       if (historyList.value.length > 0) {
-//         currentHistoryId.value = historyList.value[0].id;
-//       }
-//     }
-//   } catch (error) {
-//     console.error("模拟获取历史聊天异常：", error);
-//   } finally {
-//     historyLoading.value = false;
-//   }
-// }
-
 /**
  * 新建聊天：清空当前对话框内容 + 重置输入状态
  */
 function handleNewChat() {
+  if (store.sending) {
+    handleStop();
+  }
   // 1. 清空store中的消息列表
   store.clear();
 
@@ -365,7 +374,9 @@ function handleNewChat() {
   store.model = DEFAULT_MODEL;
 
   // 4. 取消历史聊天选中状态
-  currentHistoryId.value = null;
+  currentHistoryId.value = "";
+  historyMessagePage.value = 1;
+  historyMessageTotalPages.value = 1;
 
   // 5. 重置思考相关状态
   for (const key in thinkOpen) delete thinkOpen[key];
@@ -373,68 +384,58 @@ function handleNewChat() {
   for (const key in thinkTime) delete thinkTime[key];
 }
 
-async function handleSelectHistory(historyItem: any) {
-  currentHistoryId.value = historyItem.id;
-  historyLoading.value = true;
+async function fetchHistoryMessages(conversationId: string, page: number) {
+  console.log("fetchHistoryMessages打印conversationId：", conversationId);
+  if (loadingHistoryMessages.value) return;
+  loadingHistoryMessages.value = true;
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300)); // 模拟延迟
-
-    // 本地模拟不同历史聊天对应的消息
-    let chatRecords: any[] = [];
-    if (historyItem.id === "1") {
-      chatRecords = [
-        { role: "user", content: "你好" },
-        { role: "assistant", content: "你好！有什么可以帮你的吗？", thinkSeconds: 23 },
-      ];
-    } else if (historyItem.id === "2") {
-      chatRecords = [
-        { role: "user", content: "如何在 Vue 中实现组件通信？" },
-        {
-          role: "assistant",
-          content: "可以使用 props、emits 或者 provide/inject。",
-          thinkSeconds: 13,
-        },
-        {
-          role: "user",
-          content: "分析不同方案优缺点\n考虑性能与维护性你推荐哪种方式？",
-        },
-        {
-          role: "assistant",
-          content:
-            "<think>思考了一下内容易撒啊的</think>根据场景，如果父子组件通信使用 props/emits，跨层级使用 provide/inject。",
-          thinkSeconds: 80,
-        },
-      ];
-    } else if (historyItem.id === "3") {
-      chatRecords = [
-        { role: "user", content: "页面样式太丑了" },
-        { role: "assistant", content: "可以使用 flex 布局和统一的主题色来优化。" },
-      ];
-    }
-
-    // ✅ 先清空思考状态
-    for (const key in thinkOpen) delete thinkOpen[key];
-    for (const key in thinkLoading) delete thinkLoading[key];
-    for (const key in thinkTime) delete thinkTime[key];
-
-    // 清空当前消息并加载模拟历史消息
-    store.clear();
-    chatRecords.forEach((msg, idx) => {
-      store.appendMessage(msg.role, msg.content, msg.images || [], msg.files || []);
-
-      if (msg.role === "assistant" && msg.thinkSeconds !== undefined) {
-        thinkLoading[idx] = false; // 已完成
-        thinkOpen[idx] = false; // 默认折叠
-        thinkTime[idx] = msg.thinkSeconds; // ✅ 保留模拟时间
-      }
+    const size = historyMessagePageSize.value;
+    const response = await axios.post("/conversation/getMessagePage", {
+      current: page,
+      size,
+      conversationId,
     });
 
-    // 同步模型（可选）
-    model.value = historyItem.model || DEFAULT_MODEL;
-    store.model = model.value;
+    const result = response.data;
+    if (result.success) {
+      const records = result.data.records || [];
+      const pages = result.data.pages || 1;
+
+      // 新消息加在前面，保持时间顺序
+      records.forEach((msg: ChatMessage, idx: number) => {
+        const parsed = parseText(msg.content || "");
+        store.prependMessage({
+          role: msg.role,
+          content: msg.content,
+          images: msg.images || [],
+          files: msg.files || [],
+        });
+
+        // 保留 thinkText 逻辑
+        if (msg.role === "assistant" && parsed.thinkText) {
+          const messageIndex = store.messages.length - 1; // 当前消息在 store 中的索引
+          thinkLoading[messageIndex] = false;
+          thinkOpen[messageIndex] = false;
+          thinkTime[messageIndex] = Math.max(0, Math.round(parsed.thinkText.length / 50));
+        }
+      });
+
+      historyMessageTotalPages.value = pages;
+      historyMessagePage.value = page;
+
+      // --- 核心：滚动到底部 ---
+      await nextTick();
+      if (messagesContainer.value && page == 1) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      }
+    } else {
+      console.warn("获取历史消息失败:", result.message);
+    }
+  } catch (err) {
+    console.error("请求历史消息失败:", err);
   } finally {
-    historyLoading.value = false;
+    loadingHistoryMessages.value = false;
   }
 }
 
@@ -590,11 +591,12 @@ async function onSubmit() {
   pendingFiles = [];
 
   const start = Date.now();
-
+  console.log("当前会话 ID:", currentHistoryId.value);
   await store.send({
     opts: {
       internet: internet.value,
       local: local.value,
+      conversationId: currentHistoryId.value,
     },
     onAssistantStart: (aiIndex) => {
       thinkOpen[aiIndex] = false;

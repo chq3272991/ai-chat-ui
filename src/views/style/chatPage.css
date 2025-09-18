@@ -545,23 +545,9 @@ header {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
+  padding: 6px;
   overflow: hidden;
 }
-
-/* .chat-send-btn {
-  background-color: #409eff;
-  color: white;
-  border-radius: 6px;
-  padding: 6px 14px;
-}
-
-.chat-stop-btn {
-  background-color: #f56c6c;
-  color: white;
-  border-radius: 6px;
-  padding: 6px 14px;
-} */
 
 .query-options {
   display: flex;

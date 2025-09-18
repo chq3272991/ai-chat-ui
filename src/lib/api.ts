@@ -27,7 +27,7 @@ function getConversationId() {
  * 手动重置 conversationId
  */
 export function resetConversationId() {
-    console.log("清理fixedConversationId：" + fixedConversationId)
+    //console.log("清理fixedConversationId：" + fixedConversationId)
     fixedConversationId = null
 }
 
@@ -46,9 +46,11 @@ export async function streamChat(
     }
 ) {
     try {
-        // 如果需要在请求中传 conversationId，可以这样加：
-        const conversationId = getConversationId()
-        body.conversationId = conversationId // 假设你的接口支持这个字段
+        // 如果需要在请求中传 conversationId
+        if (body.conversationId == "" || body.conversationId == undefined) {
+            const conversationId = getConversationId()
+            body.conversationId = conversationId
+        }
 
         // === 新增：只保留每个角色的最新一条消息 ===
         const latest: Record<string, typeof body.messages[0]> = {}

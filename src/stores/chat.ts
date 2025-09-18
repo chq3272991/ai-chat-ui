@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { ChatMessage, ChatRequestBody, ChatOptions } from '@/types'
 import { streamChat, resetConversationId } from '@/lib/api'
+import { parseText } from '@/lib/parser'
 
 const DEFAULT_MODEL = "deepseek-r1:8b"
 
@@ -56,6 +57,7 @@ export const useChatStore = defineStore('chat', {
             opts?: {
                 internet?: boolean
                 local?: boolean
+                conversationId?: string
             },
             onAssistantStart?: (aiIndex: number) => void
             onAssistantDone?: (aiIndex: number) => void
@@ -73,7 +75,7 @@ export const useChatStore = defineStore('chat', {
 
             const body: ChatRequestBody = {
                 model: this.model,
-                conversationId: this.conversationId || '',
+                conversationId: opts?.conversationId ?? this.conversationId,
                 messages: this.messages,
                 options: this.options,
                 stream: true,
@@ -131,7 +133,7 @@ export const useChatStore = defineStore('chat', {
         },
 
         appendMessage(
-            role: "user" | "assistant",
+            role: "user" | "assistant" | "system" | 'tool',
             content: string,
             images: string[] = [],
             files: { name: string; type: string; dataUrl: string }[] = []
@@ -144,6 +146,35 @@ export const useChatStore = defineStore('chat', {
                 const aiIndex = this.messages.length - 1;
                 this.updateLastAssistantContent(content);
             }
+        },
+        prependMessage(m: {
+            role: string  // "user" | "assistant" | "system" | 'tool'
+            content: string
+            images?: string[]
+            files?: { name: string; type: string; dataUrl: string }[]
+        }) {
+            let newMessage: ChatMessage
+
+            if (m.role === "user") {
+                newMessage = {
+                    role: "user",
+                    content: m.content,
+                    images: m.images ?? [],
+                    files: m.files ?? []
+                }
+            } else {
+                // assistant 消息，保持和 appendMessage 一致的处理逻辑
+                newMessage = {
+                    role: "assistant",
+                    content: m.content,
+                    images: m.images ?? [],
+                    files: m.files ?? []
+                }
+            }
+
+            // 插到 messages 最前面
+            this.messages = [newMessage, ...this.messages]
         }
+
     }
 })

@@ -2,7 +2,7 @@ export type Role = 'user' | 'assistant' | 'system' | 'tool'
 
 
 export interface ChatMessage {
-    role: Role
+    role: string
     content: string
     images?: string[]
     files?: {
