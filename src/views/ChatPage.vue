@@ -270,6 +270,9 @@ const historyMessageTotalPages = ref(1);
 const loadingHistoryMessages = ref(false);
 const moreMenuOpenId = ref<string | null>(null);
 
+// 新增：标记当前是否为「新建聊天」状态（用于后续插入最新数据）
+const isNewChatSession = ref(false);
+
 /**
  * 获取历史聊天列表（分页）
  */
@@ -293,7 +296,7 @@ async function fetchChatHistory(reset = false) {
       // 使用真实数据更新列表
       if (reset) {
         historyList.value = records;
-        pageNum.value = 2; // 下一页
+        pageNum.value = 2;
       } else {
         historyList.value = [...historyList.value, ...records];
         pageNum.value = current + 1;
@@ -312,6 +315,74 @@ async function fetchChatHistory(reset = false) {
     console.error("获取聊天历史失败:", error);
   } finally {
     historyLoading.value = false;
+  }
+}
+
+/**
+ * 获取最新聊天，插入到左侧标题栏（优化加载时空白问题）
+ */
+async function fetchLeastChatHistory() {
+  // 保存当前分页状态和旧数据
+  const originalPageNum = pageNum.value;
+  const originalHasMore = hasMore.value;
+  const oldHistoryList = [...historyList.value]; // 缓存旧数据
+
+  try {
+    // 1. 不直接清空列表，而是先标记加载状态
+    historyLoading.value = true;
+    // 2. 重置分页参数，从第一页开始
+    pageNum.value = 1;
+    hasMore.value = true;
+    // 临时数组存储新加载的所有页数据
+    const newHistoryList: any[] = [];
+
+    // 3. 使用for循环加载所有分页
+    const maxLoop = 10;
+    for (let i = 1; i <= maxLoop && hasMore.value; i++) {
+      // 调用修改后的fetchChatHistory，返回当前页数据而非直接修改historyList
+      const pageData = await fetchChatHistoryPage(i);
+      newHistoryList.push(...pageData);
+      pageNum.value = i + 1;
+    }
+
+    // 4. 所有页加载完成后，再替换列表（避免中间空白）
+    historyList.value = newHistoryList;
+
+    // 5. 处理新建会话选中逻辑
+    if (isNewChatSession.value && historyList.value.length > 0) {
+      currentHistoryId.value = historyList.value[0].id;
+      isNewChatSession.value = false;
+    }
+  } catch (error) {
+    console.error("获取最新聊天记录失败:", error);
+    // 出错时恢复旧数据
+    historyList.value = oldHistoryList;
+  } finally {
+    // 恢复原始分页状态
+    pageNum.value = originalPageNum;
+    hasMore.value = originalHasMore;
+    historyLoading.value = false;
+  }
+}
+
+/**
+ * 辅助函数：获取单页聊天历史（不直接修改historyList）
+ */
+async function fetchChatHistoryPage(page: number): Promise<any[]> {
+  try {
+    const response = await axios.post("/conversation/getPage", {
+      current: page,
+      size: pageSize,
+    });
+    const result = response.data;
+    if (result.success) {
+      hasMore.value = page < (result.data.pages || 1);
+      return result.data.records || [];
+    }
+    return [];
+  } catch (error) {
+    console.error(`获取第${page}页历史失败:`, error);
+    return [];
   }
 }
 
@@ -395,16 +466,7 @@ function handleNewChat() {
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
 
-  // 4️⃣ 在左侧列表插入“最新对话”
-  const newChat = {
-    id: getConversationId(), // 唯一ID
-    title: "最新对话",
-    createTime: new Date().toISOString(),
-  };
-  historyList.value = [newChat, ...historyList.value];
-
-  // 5️⃣ 设置选中状态
-  currentHistoryId.value = newChat.id;
+  isNewChatSession.value = true;
 }
 
 async function fetchHistoryMessages(conversationId: string, page: number) {
@@ -616,9 +678,14 @@ async function onSubmit() {
     },
     onAssistantStart: (aiIndex) => {
       // 无需手动设置 thinkLoading[aiIndex] = true（Store 已处理）
+      store.updateMessageThinkState(aiIndex, { thinkLoading: true });
     },
     onAssistantDone: (aiIndex) => {
       // 无需手动计算 thinkTime（Store 已处理）
+      if (isNewChatSession) {
+        console.log("新建窗口并聊天响应结束");
+        fetchLeastChatHistory();
+      }
     },
   });
 }
