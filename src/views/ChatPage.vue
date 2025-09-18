@@ -25,11 +25,15 @@
           <h3 class="history-title">历史聊天</h3>
         </div>
         <!-- 历史内容：展开时显示，折叠时随section隐藏 -->
-        <div class="history-content">
-          <div v-if="historyLoading" class="history-loading">加载历史聊天中...</div>
+        <!-- 左侧历史聊天列表 -->
+        <div class="history-content" @scroll.passive="handleScroll">
+          <div v-if="historyLoading && historyList.length === 0" class="history-loading">
+            加载历史聊天中...
+          </div>
           <div v-else-if="historyList.length === 0" class="history-empty">
             暂无历史聊天记录
           </div>
+
           <ul class="history-list" v-else>
             <li
               class="history-item"
@@ -41,6 +45,12 @@
               {{ item.title || "未命名聊天" }}
             </li>
           </ul>
+          <div v-if="historyLoading && historyList.length > 0" class="history-loading">
+            加载更多...
+          </div>
+          <div v-if="!hasMore && historyList.length > 0" class="history-end">
+            没有更多了
+          </div>
         </div>
       </div>
     </div>
@@ -66,7 +76,7 @@
             <div class="bubble" :name="m.role">
               <!-- think 折叠区域 -->
               <div
-                v-if="thinkLoading[i] || parseText(m.content).thinkText"
+                v-if="thinkLoading[i] || parseText(m.content).thinkText || thinkTime[i]"
                 class="think-container"
               >
                 <button @click="toggleThink(i)">
@@ -81,7 +91,7 @@
                     v-for="(line, idx) in parseText(m.content).thinkLines"
                     :key="idx"
                   >
-                    {{ line }}<br />
+                    {{ line }}
                   </template>
                 </div>
               </div>
@@ -226,6 +236,63 @@ const historyList = ref<any[]>([]); // 历史聊天列表数据
 const historyLoading = ref(false); // 历史列表加载状态
 const currentHistoryId = ref<string | null>(null); // 当前选中的历史聊天ID
 
+// 分页状态
+const pageNum = ref(1);
+const pageSize = 20;
+const hasMore = ref(true);
+
+/**
+ * 获取历史聊天列表（分页）
+ */
+async function fetchChatHistory(reset = false) {
+  if (historyLoading.value || !hasMore.value) return;
+  historyLoading.value = true;
+
+  try {
+    // 模拟接口延迟
+    await new Promise((r) => setTimeout(r, 500));
+
+    // 模拟数据
+    const total = 45; // 总共 45 条
+    const startIdx = (pageNum.value - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, total);
+    const data: any[] = [];
+
+    for (let i = startIdx; i < endIdx; i++) {
+      data.push({
+        id: String(i + 1),
+        title: `聊天记录 ${i + 1}`,
+        createTime: "2025-09-18 10:00:00",
+      });
+    }
+
+    if (reset) {
+      historyList.value = data;
+    } else {
+      historyList.value = [...historyList.value, ...data];
+    }
+
+    // 更新分页状态
+    if (endIdx >= total) {
+      hasMore.value = false;
+    } else {
+      pageNum.value++;
+    }
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+/**
+ * 监听滚动到底部加载更多
+ */
+function handleScroll(e: Event) {
+  const el = e.target as HTMLElement;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
+    fetchChatHistory();
+  }
+}
+
 // ---------------------- 新增：历史聊天功能逻辑 ----------------------
 
 // 新增：历史聊天折叠状态与切换方法
@@ -242,41 +309,41 @@ const local = ref(false);
  * 页面挂载时请求历史聊天接口
  */
 onMounted(() => {
-  fetchChatHistory();
+  fetchChatHistory(true);
 });
 
-/**
- * 请求历史聊天列表接口 /chat/history
- */
-async function fetchChatHistory() {
-  historyLoading.value = true;
-  try {
-    // --------- 本地模拟数据 start ---------
-    // 模拟接口返回格式：{ code: 200, data: [...] }
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 模拟网络延迟
-    const response = {
-      code: 200,
-      data: [
-        { id: "1", title: "第一次聊天", createTime: "2025-09-17 10:00:00" },
-        { id: "2", title: "Vue开发调试", createTime: "2025-09-17 11:00:00" },
-        { id: "3", title: "前端样式优化", createTime: "2025-09-17 12:30:00" },
-      ],
-    };
-    // --------- 本地模拟数据 end ---------
+// /**
+//  * 请求历史聊天列表接口 /chat/history
+//  */
+// async function fetchChatHistory() {
+//   historyLoading.value = true;
+//   try {
+//     // --------- 本地模拟数据 start ---------
+//     // 模拟接口返回格式：{ code: 200, data: [...] }
+//     await new Promise((resolve) => setTimeout(resolve, 500)); // 模拟网络延迟
+//     const response = {
+//       code: 200,
+//       data: [
+//         { id: "1", title: "第一次聊天", createTime: "2025-09-17 10:00:00" },
+//         { id: "2", title: "Vue开发调试", createTime: "2025-09-17 11:00:00" },
+//         { id: "3", title: "前端样式优化", createTime: "2025-09-17 12:30:00" },
+//       ],
+//     };
+//     // --------- 本地模拟数据 end ---------
 
-    if (response.code === 200) {
-      historyList.value = response.data;
-      // 默认选中第一条
-      if (historyList.value.length > 0) {
-        currentHistoryId.value = historyList.value[0].id;
-      }
-    }
-  } catch (error) {
-    console.error("模拟获取历史聊天异常：", error);
-  } finally {
-    historyLoading.value = false;
-  }
-}
+//     if (response.code === 200) {
+//       historyList.value = response.data;
+//       // 默认选中第一条
+//       if (historyList.value.length > 0) {
+//         currentHistoryId.value = historyList.value[0].id;
+//       }
+//     }
+//   } catch (error) {
+//     console.error("模拟获取历史聊天异常：", error);
+//   } finally {
+//     historyLoading.value = false;
+//   }
+// }
 
 /**
  * 新建聊天：清空当前对话框内容 + 重置输入状态
@@ -318,12 +385,16 @@ async function handleSelectHistory(historyItem: any) {
     if (historyItem.id === "1") {
       chatRecords = [
         { role: "user", content: "你好" },
-        { role: "assistant", content: "你好！有什么可以帮你的吗？" },
+        { role: "assistant", content: "你好！有什么可以帮你的吗？", thinkSeconds: 23 },
       ];
     } else if (historyItem.id === "2") {
       chatRecords = [
         { role: "user", content: "如何在 Vue 中实现组件通信？" },
-        { role: "assistant", content: "可以使用 props、emits 或者 provide/inject。" },
+        {
+          role: "assistant",
+          content: "可以使用 props、emits 或者 provide/inject。",
+          thinkSeconds: 13,
+        },
         {
           role: "user",
           content: "分析不同方案优缺点\n考虑性能与维护性你推荐哪种方式？",
@@ -332,6 +403,7 @@ async function handleSelectHistory(historyItem: any) {
           role: "assistant",
           content:
             "<think>思考了一下内容易撒啊的</think>根据场景，如果父子组件通信使用 props/emits，跨层级使用 provide/inject。",
+          thinkSeconds: 80,
         },
       ];
     } else if (historyItem.id === "3") {
@@ -341,20 +413,26 @@ async function handleSelectHistory(historyItem: any) {
       ];
     }
 
+    // ✅ 先清空思考状态
+    for (const key in thinkOpen) delete thinkOpen[key];
+    for (const key in thinkLoading) delete thinkLoading[key];
+    for (const key in thinkTime) delete thinkTime[key];
+
     // 清空当前消息并加载模拟历史消息
     store.clear();
-    chatRecords.forEach((msg) => {
+    chatRecords.forEach((msg, idx) => {
       store.appendMessage(msg.role, msg.content, msg.images || [], msg.files || []);
+
+      if (msg.role === "assistant" && msg.thinkSeconds !== undefined) {
+        thinkLoading[idx] = false; // 已完成
+        thinkOpen[idx] = false; // 默认折叠
+        thinkTime[idx] = msg.thinkSeconds; // ✅ 保留模拟时间
+      }
     });
 
     // 同步模型（可选）
     model.value = historyItem.model || DEFAULT_MODEL;
     store.model = model.value;
-
-    // 重置思考状态
-    for (const key in thinkOpen) delete thinkOpen[key];
-    for (const key in thinkLoading) delete thinkLoading[key];
-    for (const key in thinkTime) delete thinkTime[key];
   } finally {
     historyLoading.value = false;
   }
