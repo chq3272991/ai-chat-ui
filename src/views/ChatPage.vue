@@ -253,7 +253,7 @@ async function fetchChatHistory(reset = false) {
     await new Promise((r) => setTimeout(r, 500));
 
     // 模拟数据
-    const total = 45; // 总共 45 条
+    const total = 100; // 总共 45 条
     const startIdx = (pageNum.value - 1) * pageSize;
     const endIdx = Math.min(startIdx + pageSize, total);
     const data: any[] = [];

@@ -500,7 +500,9 @@ header {
   margin: 0;
 }
 
+/* 历史聊天列表项文本左对齐 */
 .history-item {
+  text-align: left; /* 核心：强制文本左对齐 */
   padding: 10px 12px;
   border-radius: 4px;
   margin-bottom: 6px;
