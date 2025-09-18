@@ -2,14 +2,19 @@ export type Role = 'user' | 'assistant' | 'system' | 'tool'
 
 
 export interface ChatMessage {
-    role: string
-    content: string
-    images?: string[]
+    role: string;
+    content: string;
+    images?: string[];
     files?: {
         name: string
         type: string
         dataUrl: string
-    }[]
+    }[];
+
+    // 新增：思考状态相关属性（默认值确保使用时无需手动初始化）
+    thinkOpen?: boolean; // 是否展开思考内容
+    thinkTime?: number; // 思考耗时（秒）
+    thinkLoading?: boolean; // 是否正在思考中
 }
 
 

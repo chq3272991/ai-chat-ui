@@ -78,19 +78,19 @@
         >
           <div v-for="(m, i) in store.messages" :key="i" class="message">
             <div class="bubble" :name="m.role">
-              <!-- think 折叠区域 -->
+              <!-- 思考折叠区域：直接使用 m.thinkLoading/m.thinkTime/m.thinkOpen -->
               <div
-                v-if="thinkLoading[i] || parseText(m.content).thinkText || thinkTime[i]"
+                v-if="m.thinkLoading || parseText(m.content).thinkText || m.thinkTime"
                 class="think-container"
               >
                 <button @click="toggleThink(i)">
-                  <template v-if="thinkLoading[i]"> > 思考中{{ loadingDots }} </template>
+                  <template v-if="m.thinkLoading"> > 思考中{{ loadingDots }} </template>
                   <template v-else>
-                    > 思考了 {{ thinkTime[i] }} 秒 {{ thinkOpen[i] ? "▲" : "▼" }}
+                    > 思考了 {{ m.thinkTime }} 秒 {{ m.thinkOpen ? "▲" : "▼" }}
                   </template>
                 </button>
                 <!-- 思考文本 -->
-                <div v-show="thinkOpen[i]" class="think-content">
+                <div v-show="m.thinkOpen" class="think-content">
                   <template
                     v-for="(line, idx) in parseText(m.content).thinkLines"
                     :key="idx"
@@ -218,11 +218,12 @@ import { Upload } from "lucide-vue-next";
 import axios from "axios";
 import { Connection, Collection } from "@element-plus/icons-vue";
 import type { ChatMessage, ChatRequestBody, ChatOptions } from "@/types";
+import { getConversationId } from "@/lib/api";
 
 const store = useChatStore();
-const thinkOpen = reactive<Record<number, boolean>>({});
-const thinkTime = reactive<Record<number, number>>({});
-const thinkLoading = reactive<Record<number, boolean>>({});
+// const thinkOpen = reactive<Record<number, boolean>>({});
+// const thinkTime = reactive<Record<number, number>>({});
+// const thinkLoading = reactive<Record<number, boolean>>({});
 const DEFAULT_MODEL = "deepseek-r1:8b";
 const model = ref(store.model || DEFAULT_MODEL);
 
@@ -382,6 +383,17 @@ function handleNewChat() {
   for (const key in thinkOpen) delete thinkOpen[key];
   for (const key in thinkLoading) delete thinkLoading[key];
   for (const key in thinkTime) delete thinkTime[key];
+
+  // 4️⃣ 在左侧列表插入“最新对话”
+  const newChat = {
+    id: getConversationId(), // 唯一ID
+    title: "最新对话",
+    createTime: new Date().toISOString(),
+  };
+  historyList.value = [newChat, ...historyList.value];
+
+  // 5️⃣ 设置选中状态
+  currentHistoryId.value = newChat.id;
 }
 
 async function fetchHistoryMessages(conversationId: string, page: number) {
@@ -403,22 +415,15 @@ async function fetchHistoryMessages(conversationId: string, page: number) {
       const pages = result.data.pages || 1;
 
       // 新消息加在前面，保持时间顺序
-      records.forEach((msg: ChatMessage, idx: number) => {
+      records.forEach((msg, idx: number) => {
         const parsed = parseText(msg.content || "");
         store.prependMessage({
           role: msg.role,
           content: msg.content,
           images: msg.images || [],
           files: msg.files || [],
+          thinkTime: msg.duration, // 假设后端用 duration 字段存储思考耗时
         });
-
-        // 保留 thinkText 逻辑
-        if (msg.role === "assistant" && parsed.thinkText) {
-          const messageIndex = store.messages.length - 1; // 当前消息在 store 中的索引
-          thinkLoading[messageIndex] = false;
-          thinkOpen[messageIndex] = false;
-          thinkTime[messageIndex] = Math.max(0, Math.round(parsed.thinkText.length / 50));
-        }
       });
 
       historyMessageTotalPages.value = pages;
@@ -465,12 +470,7 @@ function handleStop() {
   store.stop({
     onStopped: () => {
       console.log("用户主动停止对话");
-      const lastIndex = store.messages.length - 1;
-      if (lastIndex >= 0 && store.messages[lastIndex].role === "assistant") {
-        thinkLoading[lastIndex] = false;
-        thinkOpen[lastIndex] = false;
-        thinkTime[lastIndex] = 0;
-      }
+      // 无需手动修改 thinkLoading，Store 已在 stop 中更新
     },
   });
 }
@@ -526,7 +526,12 @@ function renderMarkdown(text: string) {
 }
 
 watchEffect(() => {
-  if (Object.values(thinkLoading).some((v) => v)) {
+  // 替代原来的 Object.values(thinkLoading).some(...)
+  const hasLoading = store.messages.some(
+    (msg) => msg.role === "assistant" && msg.thinkLoading
+  );
+
+  if (hasLoading) {
     if (!dotTimer) {
       dotTimer = setInterval(() => {
         loadingDots.value = loadingDots.value.length >= 5 ? "." : loadingDots.value + ".";
@@ -574,7 +579,7 @@ function parseText(text: string) {
 }
 
 function toggleThink(idx: number) {
-  thinkOpen[idx] = !thinkOpen[idx];
+  store.toggleMessageThink(idx); // 替代原来的 thinkOpen[idx] = !thinkOpen[idx]
 }
 
 function formatContent(content: string) {
@@ -599,14 +604,10 @@ async function onSubmit() {
       conversationId: currentHistoryId.value,
     },
     onAssistantStart: (aiIndex) => {
-      thinkOpen[aiIndex] = false;
-      thinkLoading[aiIndex] = true;
-      thinkTime[aiIndex] = 0;
+      // 无需手动设置 thinkLoading[aiIndex] = true（Store 已处理）
     },
     onAssistantDone: (aiIndex) => {
-      thinkLoading[aiIndex] = false;
-      const sec = Math.max(0, Math.round((Date.now() - start) / 1000));
-      thinkTime[aiIndex] = sec;
+      // 无需手动计算 thinkTime（Store 已处理）
     },
   });
 }

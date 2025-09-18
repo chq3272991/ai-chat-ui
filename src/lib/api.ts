@@ -11,7 +11,7 @@ function generateUUID() {
     })
 }
 
-function getConversationId() {
+export function getConversationId() {
     // ✅ 如果已有，就直接复用，不要每次生成
     if (fixedConversationId) return fixedConversationId
 
