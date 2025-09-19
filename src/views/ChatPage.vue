@@ -14,7 +14,7 @@
       </button>
 
       <!-- 新建聊天按钮：折叠时只显示图标（+），展开时显示文字 -->
-      <button class="new-chat-btn" @click="handleNewChat">
+      <button class="new-chat-btn" @click="handleNewChat(true)">
         <span class="new-chat-icon">+</span>
         <span class="new-chat-text" v-show="!isHistoryCollapsed">新建聊天</span>
       </button>
@@ -335,10 +335,10 @@ async function fetchLeastChatHistory() {
     hasMore.value = true;
     // 临时数组存储新加载的所有页数据
     const newHistoryList: any[] = [];
+    console.log("打印originalPageNum：" + originalPageNum);
 
-    // 3. 使用for循环加载所有分页
-    const maxLoop = 10;
-    for (let i = 1; i <= maxLoop && hasMore.value; i++) {
+    // 3. 使用for循环加载原来已查看的分页范围
+    for (let i = 1; i <= originalPageNum && originalHasMore; i++) {
       // 调用修改后的fetchChatHistory，返回当前页数据而非直接修改historyList
       const pageData = await fetchChatHistoryPage(i);
       newHistoryList.push(...pageData);
@@ -442,7 +442,7 @@ onMounted(() => {
 /**
  * 新建聊天：清空当前对话框内容 + 重置输入状态
  */
-function handleNewChat() {
+function handleNewChat(click = false) {
   if (store.sending) {
     handleStop();
   }
@@ -466,7 +466,10 @@ function handleNewChat() {
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
 
-  isNewChatSession.value = true;
+  if (click) {
+    isNewChatSession.value = true;
+    fetchLeastChatHistory();
+  }
 }
 
 async function fetchHistoryMessages(conversationId: string, page: number) {
@@ -682,7 +685,7 @@ async function onSubmit() {
     },
     onAssistantDone: (aiIndex) => {
       // 无需手动计算 thinkTime（Store 已处理）
-      if (isNewChatSession) {
+      if (isNewChatSession.value) {
         console.log("新建窗口并聊天响应结束");
         fetchLeastChatHistory();
       }
