@@ -34,3 +34,11 @@ export interface ChatRequestBody {
     internet: boolean
     local: boolean
 }
+
+// @/types/index.ts
+export interface Conversation {
+    id: string;
+    title: string | undefined; // 明确标题可能为undefined
+    model: string;
+    createTime?: string;
+}

@@ -27,19 +27,22 @@
         <!-- 历史内容：展开时显示，折叠时随section隐藏 -->
         <!-- 左侧历史聊天列表 -->
         <div class="history-content" @scroll.passive="handleScroll">
-          <div v-if="historyLoading && historyList.length === 0" class="history-loading">
+          <div
+            v-if="conversationLoading && conversationList.length === 0"
+            class="history-loading"
+          >
             加载历史聊天中...
           </div>
-          <div v-else-if="historyList.length === 0" class="history-empty">
+          <div v-else-if="conversationList.length === 0" class="history-empty">
             暂无历史聊天记录
           </div>
 
           <ul class="history-list" v-else>
             <li
               class="history-item"
-              :class="{ active: currentHistoryId === item.id }"
-              @click="handleSelectHistory(item.id)"
-              v-for="item in historyList"
+              :class="{ active: currentConversationId === item.id }"
+              @click="handleSelectHistory(item)"
+              v-for="item in conversationList"
               :key="item.id"
             >
               <span class="history-title-text">{{ item.title || "未命名聊天" }}</span>
@@ -60,10 +63,16 @@
               </el-popover>
             </li>
           </ul>
-          <div v-if="historyLoading && historyList.length > 0" class="history-loading">
+          <div
+            v-if="conversationLoading && conversationList.length > 0"
+            class="history-loading"
+          >
             加载更多...
           </div>
-          <div v-if="!hasMore && historyList.length > 0" class="history-end">
+          <div
+            v-if="!conversationHasMore && conversationList.length > 0"
+            class="history-end"
+          >
             没有更多了
           </div>
         </div>
@@ -73,18 +82,6 @@
     <!-- 右侧：原聊天内容区 -->
     <div class="main-content">
       <div class="container">
-        <header>
-          <div class="kb-actions">
-            <p>模型:</p>
-            <select v-model="model">
-              <option value="qwen3:4b">qwen3:4b</option>
-              <option value="qwen3:8b">qwen3:8b</option>
-              <option value="deepseek-r1:8b">deepseek-r1:8b</option>
-            </select>
-            <button @click="reset" class="kb-btn">重置</button>
-          </div>
-        </header>
-
         <!-- 消息展示区 -->
         <main
           class="messages"
@@ -232,7 +229,7 @@ import { Upload } from "lucide-vue-next";
 // 新增：引入axios用于接口请求（若项目已全局引入可省略）
 import axios from "axios";
 import { Connection, Collection } from "@element-plus/icons-vue";
-import type { ChatMessage, ChatRequestBody, ChatOptions } from "@/types";
+import type { ChatMessage, ChatRequestBody, ChatOptions, Conversation } from "@/types";
 import { getConversationId } from "@/lib/api";
 
 const store = useChatStore();
@@ -253,14 +250,14 @@ const selectedFiles = ref<File[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 // 新增：历史聊天相关状态
-const historyList = ref<any[]>([]); // 历史聊天列表数据
-const historyLoading = ref(false); // 历史列表加载状态
-const currentHistoryId = ref<string | "">(""); // 当前选中的历史聊天ID
+const conversationList = ref<Conversation[]>([]); // 历史聊天列表数据
+const conversationLoading = ref(false); // 历史列表加载状态
+const currentConversationId = ref<string | "">(""); // 当前选中的历史聊天ID
 
 // 分页状态
-const pageNum = ref(1);
-const pageSize = 20;
-const hasMore = ref(true);
+const conversationCurrent = ref(1);
+const conversationPageSize = 20;
+const conversationHasMore = ref(true);
 const messagesContainer = ref<HTMLElement | null>(null);
 
 const historyMessages = ref<any[]>([]);
@@ -277,13 +274,13 @@ const isNewChatSession = ref(false);
  * 获取历史聊天列表（分页）
  */
 async function fetchChatHistory(reset = false) {
-  if (historyLoading.value || !hasMore.value) return;
-  historyLoading.value = true;
+  if (conversationLoading.value || !conversationHasMore.value) return;
+  conversationLoading.value = true;
 
   try {
     const response = await axios.post("/conversation/getPage", {
-      current: pageNum.value, // 当前页
-      size: pageSize, // 每页条数
+      current: conversationCurrent.value, // 当前页
+      size: conversationPageSize, // 每页条数
     });
 
     const result = response.data;
@@ -295,26 +292,28 @@ async function fetchChatHistory(reset = false) {
 
       // 使用真实数据更新列表
       if (reset) {
-        historyList.value = records;
-        pageNum.value = 2;
+        conversationList.value = records;
+        conversationCurrent.value = 2;
       } else {
-        historyList.value = [...historyList.value, ...records];
-        pageNum.value = current + 1;
+        conversationList.value = [...conversationList.value, ...records];
+        conversationCurrent.value = current + 1;
       }
 
       // 更新分页状态
-      hasMore.value = current < pages;
+      conversationHasMore.value = current < pages;
 
       // ✅ 如果是第一页，并且返回了数据，默认选中第一条
       if (reset && records.length > 0) {
-        currentHistoryId.value = records[0].id;
+        currentConversationId.value = records[0].id;
+        model.value = records[0].model;
+        store.model = records[0].model;
         fetchHistoryMessages(records[0].id, 1);
       }
     }
   } catch (error) {
     console.error("获取聊天历史失败:", error);
   } finally {
-    historyLoading.value = false;
+    conversationLoading.value = false;
   }
 }
 
@@ -323,16 +322,16 @@ async function fetchChatHistory(reset = false) {
  */
 async function fetchLeastChatHistory() {
   // 保存当前分页状态和旧数据
-  const originalPageNum = pageNum.value;
-  const originalHasMore = hasMore.value;
-  const oldHistoryList = [...historyList.value]; // 缓存旧数据
+  const originalPageNum = conversationCurrent.value;
+  const originalHasMore = conversationHasMore.value;
+  const oldHistoryList = [...conversationList.value]; // 缓存旧数据
 
   try {
     // 1. 不直接清空列表，而是先标记加载状态
-    historyLoading.value = true;
+    conversationLoading.value = true;
     // 2. 重置分页参数，从第一页开始
-    pageNum.value = 1;
-    hasMore.value = true;
+    conversationCurrent.value = 1;
+    conversationHasMore.value = true;
     // 临时数组存储新加载的所有页数据
     const newHistoryList: any[] = [];
     console.log("打印originalPageNum：" + originalPageNum);
@@ -342,25 +341,25 @@ async function fetchLeastChatHistory() {
       // 调用修改后的fetchChatHistory，返回当前页数据而非直接修改historyList
       const pageData = await fetchChatHistoryPage(i);
       newHistoryList.push(...pageData);
-      pageNum.value = i + 1;
+      conversationCurrent.value = i + 1;
     }
 
     // 4. 所有页加载完成后，再替换列表（避免中间空白）
-    historyList.value = newHistoryList;
+    conversationList.value = newHistoryList;
 
     // 5. 处理非新建会话选中逻辑
-    if (!currentHistoryId.value && historyList.value.length > 0) {
-      currentHistoryId.value = historyList.value[0].id;
+    if (!currentConversationId.value && conversationList.value.length > 0) {
+      currentConversationId.value = conversationList.value[0].id;
     }
   } catch (error) {
     console.error("获取最新聊天记录失败:", error);
     // 出错时恢复旧数据
-    historyList.value = oldHistoryList;
+    conversationList.value = oldHistoryList;
   } finally {
     // 恢复原始分页状态
-    pageNum.value = originalPageNum;
-    hasMore.value = originalHasMore;
-    historyLoading.value = false;
+    conversationCurrent.value = originalPageNum;
+    conversationHasMore.value = originalHasMore;
+    conversationLoading.value = false;
   }
 }
 
@@ -371,11 +370,11 @@ async function fetchChatHistoryPage(page: number): Promise<any[]> {
   try {
     const response = await axios.post("/conversation/getPage", {
       current: page,
-      size: pageSize,
+      size: conversationPageSize,
     });
     const result = response.data;
     if (result.success) {
-      hasMore.value = page < (result.data.pages || 1);
+      conversationHasMore.value = page < (result.data.pages || 1);
       return result.data.records || [];
     }
     return [];
@@ -385,15 +384,19 @@ async function fetchChatHistoryPage(page: number): Promise<any[]> {
   }
 }
 
-function handleSelectHistory(historyId: string) {
-  console.log("用户点击左侧会话标题切换对话，切换会话id为:" + currentHistoryId);
+function handleSelectHistory(item: Conversation) {
+  const historyId = item.id;
   if (!historyId) return;
+
+  console.log("用户点击左侧会话标题切换对话，切换会话id为:" + item.id);
 
   // 清空消息，但不清空 currentHistoryId
   store.clear();
-  currentHistoryId.value = historyId; // ✅ 更新为新会话的 id
+  currentConversationId.value = historyId; // ✅ 更新为新会话的 id
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
+  model.value = item.model;
+  store.model = item.model;
 
   // 拉第一页
   fetchHistoryMessages(historyId, 1);
@@ -421,7 +424,7 @@ function handleHistoryScroll(e: Event) {
   if (el.scrollTop <= 10) {
     const nextPage = historyMessagePage.value + 1;
     if (nextPage < historyMessageTotalPages.value) {
-      fetchHistoryMessages(currentHistoryId.value, nextPage);
+      fetchHistoryMessages(currentConversationId.value, nextPage);
     }
   }
 }
@@ -468,7 +471,7 @@ function handleNewChat(click = false) {
   store.model = DEFAULT_MODEL;
 
   // 4. 新建聊天框，重置会话ID
-  currentHistoryId.value = getConversationId(true);
+  currentConversationId.value = getConversationId(true);
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
 
@@ -591,12 +594,6 @@ function removeFile(index: number) {
 
 watch(model, (v) => (store.model = v));
 
-function reset() {
-  store.clear();
-  model.value = DEFAULT_MODEL;
-  store.model = DEFAULT_MODEL;
-}
-
 const md = new MarkdownIt({
   html: true,
   linkify: true,
@@ -678,12 +675,12 @@ async function onSubmit() {
   pendingFiles = [];
 
   const start = Date.now();
-  console.log("当前会话 ID:", currentHistoryId.value);
+  console.log("当前会话 ID:", currentConversationId.value);
   await store.send({
     opts: {
       internet: internet.value,
       local: local.value,
-      conversationId: currentHistoryId.value,
+      conversationId: currentConversationId.value,
     },
     onAssistantStart: (aiIndex) => {
       // 无需手动设置 thinkLoading[aiIndex] = true（Store 已处理）

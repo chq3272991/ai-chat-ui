@@ -11,14 +11,23 @@
         <router-link to="/kb" class="tab-btn">知识库</router-link>
       </nav>
 
-      <!-- 右侧登录状态 -->
-      <div v-if="isLoggedIn" class="flex items-center gap-2">
-        <span>{{ username }}</span>
+      <!-- 右侧登录状态与模型选择 -->
+      <div v-if="isLoggedIn" class="right-section">
+        <!-- 模型选择下拉框：仅在对话框路由显示 -->
+        <div class="model-selector" v-if="isDialogRoute">
+          <select v-model="selectedModel" class="model-select">
+            <option value="qwen3:4b">qwen3:4b</option>
+            <option value="qwen3:8b">qwen3:8b</option>
+            <option value="deepseek-r1:8b">deepseek-r1:8b</option>
+          </select>
+        </div>
+
+        <span class="username">{{ username }}</span>
         <el-button type="text" @click="logout" class="logout-btn">[退出]</el-button>
       </div>
     </header>
 
-    <!-- 路由内容区域，占满剩余空间 -->
+    <!-- 路由内容区域 -->
     <main class="flex-1 overflow-auto min-h-0">
       <router-view />
     </main>
@@ -26,18 +35,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useRouter, useRoute } from "vue-router";
+import { useChatStore } from "@/stores/chat";
 
 const userStore = useUserStore();
+const chatStore = useChatStore();
 const router = useRouter();
 const route = useRoute();
 
 const isLoggedIn = computed(() => userStore.isLoggedIn);
 const username = computed(() => userStore.username);
+const selectedModel = ref(chatStore.model || "deepseek-r1:8b");
 
-// 当在登录页或注册页时隐藏顶部导航
+// 新增：判断当前是否为对话框路由（路径为"/"）
+const isDialogRoute = computed(() => route.path === "/");
+
+watch(selectedModel, (newModel) => {
+  chatStore.model = newModel;
+});
+
 const showHeader = computed(() => !["/login", "/register"].includes(route.path));
 
 function logout() {
@@ -47,6 +65,7 @@ function logout() {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .header-container {
   display: flex;
   flex-direction: column;
@@ -56,11 +75,11 @@ function logout() {
 }
 
 .header-p {
-  padding: 0.25rem 0.5rem; /* 上下左右内边距 */
+  padding: 0.25rem 0.5rem;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 左右分布 */
+  justify-content: space-between;
 }
 
 .tab-btn {
@@ -76,7 +95,34 @@ function logout() {
   font-weight: 500;
 }
 
+.right-section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.model-selector {
+  font-size: 13px;
+}
+
+.model-select {
+  padding: 2px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background-color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.username {
+  font-size: 13px;
+}
+
 .logout-btn {
-  margin-left: 5px;
+  font-size: 13px;
+  margin: 0;
+  padding: 0 6px;
 }
 </style>
