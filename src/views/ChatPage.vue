@@ -305,6 +305,7 @@ async function fetchChatHistory(reset = false) {
       // ✅ 如果是第一页，并且返回了数据，默认选中第一条
       if (reset && records.length > 0) {
         currentConversationId.value = records[0].id;
+        console.log("首次加载第一条会话，切换model:", records[0].model);
         model.value = records[0].model;
         store.model = records[0].model;
         fetchHistoryMessages(records[0].id, 1);
@@ -390,13 +391,18 @@ function handleSelectHistory(item: Conversation) {
 
   console.log("用户点击左侧会话标题切换对话，切换会话id为:" + item.id);
 
+  //console.log("Conversation会话对象：", item);
+
   // 清空消息，但不清空 currentHistoryId
   store.clear();
   currentConversationId.value = historyId; // ✅ 更新为新会话的 id
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
-  model.value = item.model;
-  store.model = item.model;
+  if (model.value !== item.model) {
+    console.log("切换模型：", item.model);
+    model.value = item.model;
+    store.model = item.model;
+  }
 
   // 拉第一页
   fetchHistoryMessages(historyId, 1);

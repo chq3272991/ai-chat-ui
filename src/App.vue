@@ -53,8 +53,22 @@ const selectedModel = ref(chatStore.model || "deepseek-r1:8b");
 const isDialogRoute = computed(() => route.path === "/");
 
 watch(selectedModel, (newModel) => {
+  console.log("头部下拉框修改模型：", newModel);
   chatStore.model = newModel;
 });
+
+watch(
+  () => chatStore.model, // 监听Pinia状态：必须用“函数返回值”的形式（Pinia响应式状态监听规则）
+  (newModel, oldModel) => {
+    // 避免循环赋值：当其他页面修改时，才同步到selectedModel
+    if (newModel !== selectedModel.value) {
+      selectedModel.value = newModel;
+    }
+  },
+  { immediate: true } // 可选：页面加载时立即执行一次，确保下拉框初始值与chatStore一致
+);
+
+// 如果chatStore.model被其他页面调用，其值变化了，如何检测到并赋值给selectedModel
 
 const showHeader = computed(() => !["/login", "/register"].includes(route.path));
 
