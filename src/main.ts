@@ -19,12 +19,12 @@ axios.defaults.baseURL = "/api";
 axios.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("token");
-        console.log("打印 token： " + token)
+        // console.log("打印 token： " + token)
         if (token) {
             config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${token}`;
         }
-        console.log("打印 config:", config)
+        // console.log("打印 config:", config)
         return config;
     },
     (error) => Promise.reject(error)

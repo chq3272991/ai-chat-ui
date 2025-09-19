@@ -11,7 +11,12 @@ function generateUUID() {
     })
 }
 
-export function getConversationId() {
+export function getConversationId(reset = false) {
+    if (reset) {
+        console.log("重置fixedConversationId")
+        fixedConversationId = null
+    }
+
     // ✅ 如果已有，就直接复用，不要每次生成
     if (fixedConversationId) return fixedConversationId
 
@@ -20,6 +25,7 @@ export function getConversationId() {
     } else {
         fixedConversationId = generateUUID()
     }
+    console.log("生成新的fixedConversationId: ", fixedConversationId)
     return fixedConversationId
 }
 

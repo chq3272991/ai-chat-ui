@@ -348,10 +348,9 @@ async function fetchLeastChatHistory() {
     // 4. 所有页加载完成后，再替换列表（避免中间空白）
     historyList.value = newHistoryList;
 
-    // 5. 处理新建会话选中逻辑
-    if (isNewChatSession.value && historyList.value.length > 0) {
+    // 5. 处理非新建会话选中逻辑
+    if (!currentHistoryId.value && historyList.value.length > 0) {
       currentHistoryId.value = historyList.value[0].id;
-      isNewChatSession.value = false;
     }
   } catch (error) {
     console.error("获取最新聊天记录失败:", error);
@@ -387,6 +386,7 @@ async function fetchChatHistoryPage(page: number): Promise<any[]> {
 }
 
 function handleSelectHistory(historyId: string) {
+  console.log("用户点击左侧会话标题切换对话，切换会话id为:" + currentHistoryId);
   if (!historyId) return;
 
   // 清空消息，但不清空 currentHistoryId
@@ -397,6 +397,12 @@ function handleSelectHistory(historyId: string) {
 
   // 拉第一页
   fetchHistoryMessages(historyId, 1);
+
+  // 当用户还处于新建窗口的时候，点击了左侧会话标题，说明需要切换会话界面了
+  if (isNewChatSession.value) {
+    fetchLeastChatHistory();
+    isNewChatSession.value = false;
+  }
 }
 
 /**
@@ -461,8 +467,8 @@ function handleNewChat(click = false) {
   model.value = DEFAULT_MODEL;
   store.model = DEFAULT_MODEL;
 
-  // 4. 取消历史聊天选中状态
-  currentHistoryId.value = "";
+  // 4. 新建聊天框，重置会话ID
+  currentHistoryId.value = getConversationId(true);
   historyMessagePage.value = 1;
   historyMessageTotalPages.value = 1;
 
@@ -473,7 +479,7 @@ function handleNewChat(click = false) {
 }
 
 async function fetchHistoryMessages(conversationId: string, page: number) {
-  console.log("fetchHistoryMessages打印conversationId：", conversationId);
+  // console.log("fetchHistoryMessages打印conversationId：", conversationId);
   if (loadingHistoryMessages.value) return;
   loadingHistoryMessages.value = true;
 
